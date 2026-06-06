@@ -1,0 +1,152 @@
+{
+  "transactions": [
+    {
+      "id": "75874189f69175d1",
+      "date": "2026-05-01",
+      "account": "shared_zkb",
+      "description": "Salary Flo",
+      "amount": 5000,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Income",
+      "owner": "shared",
+      "ignored": false
+    },
+    {
+      "id": "55c8d210dba21045",
+      "date": "2026-05-01",
+      "account": "shared_zkb",
+      "description": "Salary Wife",
+      "amount": 4500,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Income",
+      "owner": "shared",
+      "ignored": false
+    },
+    {
+      "id": "f7cfcfc36cd916ca",
+      "date": "2026-05-02",
+      "account": "shared_zkb",
+      "description": "Migros Wipkingen",
+      "amount": -84.3,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Groceries",
+      "owner": "shared",
+      "ignored": false
+    },
+    {
+      "id": "dc95b790eefe4214",
+      "date": "2026-05-03",
+      "account": "shared_zkb",
+      "description": "SBB Mobile",
+      "amount": -42.0,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Transport",
+      "owner": "shared",
+      "ignored": false
+    },
+    {
+      "id": "dba83eccb52bd617",
+      "date": "2026-05-04",
+      "account": "shared_zkb",
+      "description": "Swica Insurance",
+      "amount": -1000.0,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Health insurance",
+      "owner": "shared",
+      "ignored": false
+    },
+    {
+      "id": "37bab1631fd19144",
+      "date": "2026-05-05",
+      "account": "shared_zkb",
+      "description": "ETF Purchase",
+      "amount": -1500.0,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Investments",
+      "owner": "shared",
+      "ignored": false
+    },
+    {
+      "id": "e4e71ac009d3cd75",
+      "date": "2026-05-06",
+      "account": "flo_card",
+      "description": "Spotify Subscription",
+      "amount": -12.9,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Subscriptions",
+      "owner": "flo",
+      "ignored": false
+    },
+    {
+      "id": "1b595f9ec7a0954d",
+      "date": "2026-05-07",
+      "account": "wife_card",
+      "description": "Cosmetics Shop",
+      "amount": -40.0,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Cosmetics",
+      "owner": "wife",
+      "ignored": false
+    }
+  ],
+  "rules": [
+    {
+      "id": "81bafac0768e1e5b",
+      "pattern": "migros",
+      "category": "Groceries",
+      "owner": "shared",
+      "priority": 0
+    },
+    {
+      "id": "603ad63eb10fc1dc",
+      "pattern": "sbb",
+      "category": "Transport",
+      "owner": "shared",
+      "priority": 0
+    },
+    {
+      "id": "af952ab98e157542",
+      "pattern": "swica",
+      "category": "Health insurance",
+      "owner": "shared",
+      "priority": 0
+    },
+    {
+      "id": "2382ba1d3ed35ba3",
+      "pattern": "etf",
+      "category": "Investments",
+      "owner": "shared",
+      "priority": 0
+    },
+    {
+      "id": "44b8a32e627399a1",
+      "pattern": "spotify",
+      "category": "Subscriptions",
+      "owner": "flo",
+      "priority": 0
+    },
+    {
+      "id": "4e940d4115681257",
+      "pattern": "cosmetics",
+      "category": "Cosmetics",
+      "owner": "wife",
+      "priority": 0
+    },
+    {
+      "id": "46e0897013ceb7e8",
+      "pattern": "salary",
+      "category": "Income",
+      "owner": "shared",
+      "priority": 0
+    }
+  ],
+  "category_styles": {}
+}

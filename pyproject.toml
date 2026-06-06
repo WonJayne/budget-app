@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "budget_gui_app"
+version = "0.1.0"
+description = "Dynamic local budget prototype with review workflow and Sankey dashboard"
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^2.2"
+plotly = "^5.20"
+matplotlib = "^3.8"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0"
+
+[tool.poetry.scripts]
+budget-gui-app = "budget_gui_app.ui.main:run_app"
+
+[build-system]
+requires = ["poetry-core>=1.5.0"]
+build-backend = "poetry.core.masonry.api"
