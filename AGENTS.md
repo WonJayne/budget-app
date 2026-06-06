@@ -426,3 +426,21 @@ The app should include a small How-to/Demo page explaining import, rules, manual
 Keep the app local-only. Do not introduce external services, bank APIs, cloud sync, user accounts, or CDN dependencies.
 
 One extra product point: make Monthly the main/default view and Yearly the overview/reporting view. Most household finance decisions happen monthly; the yearly view is mainly for sanity checks like “are we actually saving over the year?”
+
+## Ledger and Colour Editor Rules
+
+The app must have a real ledger view for all entries. Manual entries are not enough. Imported CSV entries must be inspectable, editable, ignorable, and deletable.
+
+The ledger should be period-aware. Users must be able to switch between All, Year, and Month views and edit the entries shown for that period.
+
+Imported entries keep their transaction ID when edited. Do not recompute IDs on edit.
+
+Ignoring is the preferred way to handle duplicates because it is reversible and preserves traceability.
+
+Outflows are stored as negative amounts. Inflows are stored as positive amounts. The UI should normalise the sign based on selected flow type.
+
+The colour editor must be usable by non-programmers. Do not require users to type hex codes. Use a category dropdown, visible palette chips, a preview, and optional advanced custom colour input.
+
+Palette chips must show their actual colours. Do not render all palette options as default blue buttons.
+
+Sankey hover information should show amount, share, and transaction count where possible.

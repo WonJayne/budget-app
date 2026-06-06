@@ -12,8 +12,6 @@ from ..core.periods import PeriodFilter, available_years, default_period_filter
 from ..core.sankey import DEFAULT_NODE_COLOUR, SankeyBuilder
 from ..core.state import AppState
 from ..core.summaries import cash_flow_totals, included_transactions, summarize_transactions, yearly_overview
-from .pages_data import select_or_new, selected_value
-
 DEFAULT_PALETTE = [
     "#4C78A8", "#F58518", "#54A24B", "#E45756",
     "#72B7B2", "#B279A2", "#FF9DA6", "#9D755D",
@@ -172,27 +170,40 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
 
             with ui.expansion("Category colour editor", icon="palette").classes("w-full"):
                 catalog = state.option_catalog()
-                categories = sorted(set(catalog.inflow_categories) | set(catalog.outflow_categories))
+                categories = sorted(set(catalog.inflow_categories) | set(catalog.outflow_categories) | set(state.category_style_map()))
                 if not categories:
                     ui.label("No categories yet.").classes("text-gray-500")
                 else:
                     if filters.selected_colour_category not in categories:
                         filters.selected_colour_category = categories[0]
                     styles = state.category_style_map()
-                    current = styles.get(filters.selected_colour_category).colour if filters.selected_colour_category in styles else DEFAULT_NODE_COLOUR
-                    category_select, category_new = select_or_new("Category to edit", categories, filters.selected_colour_category)
-                    category_select.on_value_change(lambda event: (setattr(filters, "selected_colour_category", selected_value(category_select, category_new)), content.refresh()))
-                    with ui.row().classes("items-center"):
+                    saved_colour = styles.get(filters.selected_colour_category).colour if filters.selected_colour_category in styles else None
+                    preview_colour = filters.selected_colour or saved_colour or DEFAULT_NODE_COLOUR
+                    ui.select(categories, label="Category", value=filters.selected_colour_category, on_change=lambda event: (setattr(filters, "selected_colour_category", event.value), setattr(filters, "selected_colour", styles.get(event.value).colour if event.value in styles else DEFAULT_PALETTE[0]), content.refresh())).classes("w-72")
+                    with ui.row().classes("items-center gap-3"):
                         ui.label("Current colour:")
-                        ui.label(" ").style(f"background:{current}; width:32px; height:20px; border-radius:6px;")
-                    with ui.row().classes("gap-2"):
+                        ui.label(" ").style(f"background-color:{preview_colour}; width:64px; height:36px; border-radius:8px; border:2px solid #374151;")
+                        ui.label(preview_colour).classes("font-mono text-sm")
+                        if saved_colour:
+                            ui.label("custom saved").classes("text-xs text-green-700")
+                        else:
+                            ui.label("automatic fallback until saved").classes("text-xs text-gray-500")
+                    ui.label("Palette").classes("font-bold")
+                    with ui.row().classes("gap-2 items-center"):
                         for colour in DEFAULT_PALETTE:
-                            ui.button("", on_click=lambda _, c=colour: (setattr(filters, "selected_colour", c), on_state_change(get_state().set_category_colour(selected_value(category_select, category_new), c)), ui.notify("Colour saved."))).style(f"background:{colour}; width:28px; height:28px; min-width:28px;")
+                            selected = colour.lower() == preview_colour.lower()
+                            chip = ui.button("✓" if selected else "", on_click=lambda _, c=colour: (setattr(filters, "selected_colour", c), content.refresh()))
+                            chip.props(f'aria-label="{colour}" title="{colour}"')
+                            chip.style(
+                                f"background-color:{colour}; color:white; width:32px; height:32px; min-width:32px; "
+                                f"border-radius:6px; border:{'3px solid #111827' if selected else '1px solid #d1d5db'};"
+                            )
                     with ui.expansion("Advanced custom hex"):
-                        colour_input = ui.input("Custom hex colour", value=filters.selected_colour).classes("w-40")
-                        with ui.row():
-                            ui.button("Save colour", on_click=lambda: (on_state_change(get_state().set_category_colour(selected_value(category_select, category_new), colour_input.value or None)), ui.notify("Colour saved.")))
-                            ui.button("Reset colour", on_click=lambda: (on_state_change(get_state().set_category_colour(selected_value(category_select, category_new), None)), ui.notify("Colour reset.")))
+                        colour_input = ui.input("Custom hex colour", value=filters.selected_colour, on_change=lambda event: setattr(filters, "selected_colour", event.value)).classes("w-40")
+                        ui.color_input("Native colour picker", value=preview_colour, on_change=lambda event: (setattr(filters, "selected_colour", event.value), content.refresh())).classes("w-40")
+                    with ui.row():
+                        ui.button("Save colour", color="primary", on_click=lambda: (on_state_change(get_state().set_category_colour(filters.selected_colour_category or categories[0], filters.selected_colour)), ui.notify("Colour saved.")))
+                        ui.button("Reset to automatic", on_click=lambda: (on_state_change(get_state().set_category_colour(filters.selected_colour_category or categories[0], None)), setattr(filters, "selected_colour", DEFAULT_PALETTE[0]), ui.notify("Colour reset.")))
 
     content()
     return content.refresh

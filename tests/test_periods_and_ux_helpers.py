@@ -85,6 +85,14 @@ def test_colour_palette_assignment_persists_through_json_roundtrip() -> None:
     assert loaded.category_style_map()["Groceries"] == CategoryStyle("Groceries", "#4C78A8")
 
 
+def test_resetting_category_colour_removes_stored_custom_colour() -> None:
+    state = AppState.empty().set_category_colour("Groceries", "#4C78A8")
+
+    reset = state.set_category_colour("Groceries", None)
+
+    assert "Groceries" not in reset.category_style_map()
+
+
 def test_sankey_period_colours_never_include_none() -> None:
     rows = (tx("salary", date(2026, 1, 1), 1000, "Salary", "Flo"), tx("rent", date(2026, 1, 2), -700, "Rent", "Shared"))
 

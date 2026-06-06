@@ -35,6 +35,8 @@ class StateJsonRepository:
                     "assignment_source": tx.assignment_source,
                     "ignored": tx.ignored,
                     "source_kind": tx.source_kind,
+                    "entry_source": tx.entry_source,
+                    "edited": tx.edited,
                 }
                 for tx in state.transactions
             ],
@@ -56,6 +58,15 @@ class StateJsonRepository:
 
     def from_dict(self, data: dict[str, Any]) -> AppState:
         metadata_data = data.get("metadata", {})
+        def source_defaults(item: dict[str, Any]) -> tuple[str, str]:
+            entry_source = item.get("entry_source")
+            if entry_source not in ("csv", "manual"):
+                entry_source = "manual" if item.get("source_file") in (None, "manual") else "csv"
+            source_kind = item.get("source_kind")
+            if source_kind not in ("imported", "manual"):
+                source_kind = "manual" if entry_source == "manual" else "imported"
+            return source_kind, entry_source
+
         transactions = tuple(
             Transaction(
                 id=item["id"],
@@ -69,7 +80,9 @@ class StateJsonRepository:
                 owner=item.get("owner"),
                 assignment_source=item.get("assignment_source"),
                 ignored=bool(item.get("ignored", False)),
-                source_kind=item.get("source_kind") or ("manual" if item.get("source_file") in (None, "manual") else "imported"),
+                source_kind=source_defaults(item)[0],
+                entry_source=source_defaults(item)[1],
+                edited=bool(item.get("edited", False)),
             )
             for item in data.get("transactions", [])
         )

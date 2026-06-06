@@ -15,7 +15,9 @@
       "owner": "Flo",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "e0487cb0c7440acb",
@@ -29,7 +31,9 @@
       "owner": "Nina",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "ab022b9a16ca7484",
@@ -43,7 +47,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "995b2119e1f57c99",
@@ -57,7 +63,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "44d8499b8de69e5f",
@@ -71,7 +79,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "81fdf22a457aa62f",
@@ -85,7 +95,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "5051b0a2f4477ab5",
@@ -99,7 +111,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "0d07eb9a37c8dbac",
@@ -113,7 +127,9 @@
       "owner": "Flo",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "3d9c9ef8a4ec517c",
@@ -127,7 +143,9 @@
       "owner": "Nina",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "8ca3ba97f48391aa",
@@ -141,7 +159,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "7e7004a8413ae934",
@@ -155,7 +175,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "cb0937797ff9d9a0",
@@ -169,7 +191,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "56d5580d22d628a6",
@@ -183,7 +207,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "d8b029a52d50abe1",
@@ -197,7 +223,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "b919d90f18b44357",
@@ -211,7 +239,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "e7fa043a71697247",
@@ -225,7 +255,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "93f1721718414877",
@@ -239,7 +271,9 @@
       "owner": "Flo",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "dad997c0131d1eb4",
@@ -253,7 +287,9 @@
       "owner": "Nina",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "1b5d485ee5819a70",
@@ -267,7 +303,9 @@
       "owner": "Shared",
       "assignment_source": "rule",
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     },
     {
       "id": "b554885a7b07f54f",
@@ -281,7 +319,9 @@
       "owner": null,
       "assignment_source": null,
       "ignored": false,
-      "source_kind": "imported"
+      "source_kind": "imported",
+      "entry_source": "csv",
+      "edited": false
     }
   ],
   "rules": [

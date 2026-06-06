@@ -110,6 +110,7 @@ class AppState:
             owner=owner,
             assignment_source="manual",
             source_kind="manual",
+            entry_source="manual",
         )
         return self.add_transactions((transaction,))
 
@@ -139,12 +140,56 @@ class AppState:
                 owner=owner,
                 assignment_source="manual",
                 source_kind="manual",
+                entry_source="manual",
+                edited=True,
             )
             if transaction.id == transaction_id and transaction.source_kind == "manual"
             else transaction
             for transaction in self.transactions
         )
         return replace(self, transactions=updated).reapply_rules()
+
+    def update_transaction(
+        self,
+        transaction_id: str,
+        *,
+        flow_type: FlowType,
+        tx_date: date,
+        description: str,
+        amount: float,
+        currency: str,
+        account: str,
+        category: str | None,
+        owner: str | None,
+        ignored: bool,
+    ) -> "AppState":
+        """Update any transaction while preserving its stable transaction ID."""
+        signed_amount = abs(amount) if flow_type == "inflow" else -abs(amount)
+        category_value = category or None
+        owner_value = owner or None
+        updated = tuple(
+            replace(
+                transaction,
+                date=tx_date,
+                description=description,
+                amount=signed_amount,
+                currency=currency,
+                account=account,
+                category=category_value,
+                owner=owner_value,
+                assignment_source="manual" if category_value or owner_value else None,
+                ignored=ignored,
+                edited=True,
+            )
+            if transaction.id == transaction_id
+            else transaction
+            for transaction in self.transactions
+        )
+        return replace(self, transactions=updated).reapply_rules()
+
+    def delete_transaction(self, transaction_id: str) -> "AppState":
+        """Delete any transaction from state."""
+        return replace(self, transactions=tuple(transaction for transaction in self.transactions if transaction.id != transaction_id))
 
     def remove_manual_transaction(self, transaction_id: str) -> "AppState":
         return replace(
@@ -183,7 +228,10 @@ class AppState:
 
     def set_category_colour(self, category: str, colour: str | None) -> "AppState":
         styles = self.category_style_map()
-        styles[category] = CategoryStyle(category=category, colour=colour or None)
+        if colour:
+            styles[category] = CategoryStyle(category=category, colour=colour)
+        else:
+            styles.pop(category, None)
         return replace(self, category_styles=tuple(styles[cat] for cat in sorted(styles)))
 
     def clear(self) -> "AppState":
