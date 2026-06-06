@@ -13,9 +13,11 @@ from typing import Callable
 from nicegui import events, ui
 
 from ..core.importers import TransactionImporter
-from ..core.models import FlowType, Rule, flow_type_for_amount
+from ..core.models import FlowType, Rule, Transaction, flow_type_for_amount
+from ..core.periods import PeriodFilter, available_years, default_period_filter
 from ..core.state import AppState, DEFAULT_ACCOUNT, DEFAULT_CURRENCY
 from ..io.state_json import StateJsonRepository
+from ..io.transactions_csv import transactions_to_csv
 
 OTHER_OPTION = "Other / new..."
 
@@ -68,6 +70,8 @@ def select_or_new(label: str, options: tuple[str, ...] | list[str], value: str |
         initial = OTHER_OPTION
     select = ui.select(choices + [OTHER_OPTION], label=label, value=initial).classes("w-full")
     new_value = ui.input(f"New {label.lower()}", value=value if value and value not in choices else "").classes("w-full")
+    new_value.visible = initial == OTHER_OPTION
+    select.on_value_change(lambda event: new_value.set_visibility(event.value == OTHER_OPTION))
     return select, new_value
 
 
@@ -75,9 +79,15 @@ def selected_value(select, new_value) -> str:
     return (new_value.value if select.value == OTHER_OPTION else select.value) or ""
 
 
+@dataclass
+class DataFilters:
+    period: PeriodFilter | None = None
+
+
 def build_data_page(holder: UiState) -> None:
     importer = TransactionImporter()
     repository = StateJsonRepository()
+    filters = DataFilters()
 
     def set_state(state: AppState) -> None:
         holder.state = state
@@ -107,6 +117,9 @@ def build_data_page(holder: UiState) -> None:
     def export_state() -> None:
         data = json.dumps(repository.to_dict(holder.state), indent=2).encode("utf-8")
         ui.download(data, filename="budget_state.json")
+
+    def export_csv() -> None:
+        ui.download(transactions_to_csv(holder.state.transactions).encode("utf-8"), filename="budget_transactions_merged.csv")
 
     def clear_state() -> None:
         with ui.dialog() as dialog, ui.card():
@@ -186,26 +199,28 @@ def build_data_page(holder: UiState) -> None:
                 ui.button("Save rule", on_click=lambda: save_rule(None, pattern, rule_type, category_select, category_new, owner_select, owner_new, priority, dialog))
         dialog.open()
 
-    def manual_entry_dialog(flow_type: FlowType) -> None:
+    def manual_entry_dialog(flow_type: FlowType, transaction: Transaction | None = None) -> None:
         catalog = holder.state.option_catalog()
+        initial_flow = transaction.flow_type if transaction else flow_type
+        initial_date = transaction.date if transaction else ((filters.period and filters.period.year and filters.period.month and date(filters.period.year, filters.period.month, 1)) or date.today())
         with ui.dialog() as dialog, ui.card().classes("w-96"):
-            ui.label(f"Add {flow_type}").classes("text-lg font-bold")
-            rule_type = ui.select(["inflow", "outflow"], label="Flow type", value=flow_type).classes("w-full")
-            tx_date = ui.input("Date", value=date.today().isoformat()).props("type=date").classes("w-full")
-            description = ui.input("Description", value="Manual entry").classes("w-full")
-            amount = ui.number("Amount (positive)", value=0.0, format="%.2f").classes("w-full")
-            currency_select, currency_new = select_or_new("Currency", catalog.currencies, DEFAULT_CURRENCY)
-            account_select, account_new = select_or_new("Account/source", catalog.accounts, DEFAULT_ACCOUNT)
-            category_select, category_new = select_or_new("Category", category_options(flow_type), None)
+            ui.label(("Edit" if transaction else "Add") + f" {initial_flow}").classes("text-lg font-bold")
+            rule_type = ui.select(["inflow", "outflow"], label="Flow type", value=initial_flow).classes("w-full")
+            tx_date = ui.input("Date", value=initial_date.isoformat()).props("type=date").classes("w-full")
+            description = ui.input("Description", value=transaction.description if transaction else "Manual entry").classes("w-full")
+            amount = ui.number("Amount (enter positive number)", value=abs(transaction.amount) if transaction else 0.0, format="%.2f").classes("w-full")
+            currency_select, currency_new = select_or_new("Currency", catalog.currencies, transaction.currency if transaction else DEFAULT_CURRENCY)
+            account_select, account_new = select_or_new("Account/source", catalog.accounts, transaction.account if transaction else DEFAULT_ACCOUNT)
+            category_select, category_new = select_or_new("Category", category_options(initial_flow), transaction.category if transaction else None)
 
             def update_manual_category_options(event) -> None:
                 category_select.set_options(list(category_options(event.value)) + [OTHER_OPTION])
 
             rule_type.on_value_change(update_manual_category_options)
-            owner_select, owner_new = select_or_new("Owner", catalog.owners, "Shared")
+            owner_select, owner_new = select_or_new("Owner", catalog.owners, transaction.owner if transaction else "Shared")
 
             def save_manual() -> None:
-                set_state(holder.state.add_manual_transaction(
+                kwargs = dict(
                     flow_type=rule_type.value,
                     tx_date=date.fromisoformat(tx_date.value),
                     description=description.value,
@@ -214,9 +229,10 @@ def build_data_page(holder: UiState) -> None:
                     account=selected_value(account_select, account_new),
                     category=selected_value(category_select, category_new),
                     owner=selected_value(owner_select, owner_new),
-                ))
+                )
+                set_state(holder.state.update_manual_transaction(transaction.id, **kwargs) if transaction else holder.state.add_manual_transaction(**kwargs))
                 dialog.close()
-                ui.notify("Manual entry added.")
+                ui.notify("Manual entry saved.")
 
             with ui.row():
                 ui.button("Cancel", on_click=dialog.close)
@@ -230,7 +246,29 @@ def build_data_page(holder: UiState) -> None:
                 ui.upload(label="Import CSV", auto_upload=True, multiple=True, on_upload=import_csv).props("accept=.csv").classes("max-w-sm")
                 ui.upload(label="Import state", auto_upload=True, on_upload=import_state).props("accept=.json").classes("max-w-sm")
                 ui.button("Export state", on_click=export_state)
+                ui.button("Export merged CSV", on_click=export_csv)
                 ui.button("Clear all data", color="negative", on_click=clear_state)
+
+            if filters.period is None:
+                filters.period = default_period_filter(holder.state.transactions)
+            years = available_years(holder.state.transactions)
+            if filters.period.year not in years:
+                filters.period = default_period_filter(holder.state.transactions)
+            with ui.card().classes("w-full"):
+                ui.label("Manual entries period").classes("font-bold")
+                with ui.row().classes("items-center"):
+                    mode_select = ui.select(["all", "year", "month"], label="View", value=filters.period.mode).classes("w-32")
+                    year_select = ui.select(list(years), label="Year", value=filters.period.year or years[-1]).classes("w-32")
+                    month_select = ui.select(list(range(1, 13)), label="Month", value=filters.period.month or 1).classes("w-32")
+                    month_select.visible = filters.period.mode == "month"
+                    year_select.visible = filters.period.mode in ("year", "month")
+                    def update_period() -> None:
+                        filters.period = PeriodFilter(mode=mode_select.value, year=int(year_select.value) if mode_select.value in ("year", "month") else None, month=int(month_select.value) if mode_select.value == "month" else None)
+                        content.refresh()
+                    mode_select.on_value_change(lambda _: update_period())
+                    year_select.on_value_change(lambda _: update_period())
+                    month_select.on_value_change(lambda _: update_period())
+                ui.label(f"Showing manual entries for: {filters.period.label}").classes("text-sm text-gray-600")
 
             ui.label("Manual cash-flow entries").classes("text-xl font-bold")
             with ui.row():
@@ -249,7 +287,7 @@ def build_data_page(holder: UiState) -> None:
                     "actions": "",
                 }
                 for tx in holder.state.transactions
-                if tx.source_kind == "manual"
+                if tx.source_kind == "manual" and (filters.period is None or filters.period.includes(tx))
             ]
             if manual_rows:
                 manual_table = ui.table(
@@ -268,12 +306,20 @@ def build_data_page(holder: UiState) -> None:
                 ).classes("w-full")
                 manual_table.add_slot("body-cell-actions", """
                     <q-td :props="props">
+                      <q-btn dense flat color="primary" label="Edit" @click="$parent.$emit('edit', props.row.id)" />
                       <q-btn dense flat color="negative" label="Delete" @click="$parent.$emit('delete', props.row.id)" />
                     </q-td>
                 """)
+                manual_table.on("edit", lambda event: manual_entry_dialog("outflow", next(tx for tx in holder.state.transactions if tx.id == event.args)))
                 manual_table.on("delete", lambda event: (set_state(holder.state.remove_manual_transaction(event.args)), ui.notify("Manual entry deleted.")))
             else:
                 ui.label("No manual entries yet.").classes("text-gray-500")
+
+            with ui.tabs().classes("w-full") as section_tabs:
+                manual_tab = ui.tab("Manual entries")
+                rules_tab = ui.tab("Rules")
+                review_tab = ui.tab("Review unclassified")
+            # Compact section anchors for scanning; content remains below so existing callbacks stay simple.
 
             ui.label("Rules").classes("text-xl font-bold")
             with ui.row():

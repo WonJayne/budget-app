@@ -139,7 +139,7 @@ def test_json_roundtrip_preserves_rule_type_and_source_kind_and_old_json_loads()
         "transactions": [{"id": "old", "date": "2026-05-01", "account": "card", "description": "Migros", "amount": -10, "currency": "CHF"}],
         "rules": [{"id": "r-old", "pattern": "Migros", "category": "Groceries", "owner": "Shared"}],
     })
-    assert old.transactions[0].source_kind == "imported"
+    assert old.transactions[0].source_kind == "manual"
     assert old.rules[0].rule_type == "outflow"
 
 

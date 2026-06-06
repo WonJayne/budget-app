@@ -8,6 +8,7 @@ from typing import Iterable, Mapping
 import plotly.graph_objects as go
 
 from .models import CategoryStyle, Transaction, flow_type_for_amount
+from .periods import PeriodFilter
 from .summaries import cash_flow_totals
 
 DEFAULT_NODE_COLOUR = "#9ca3af"
@@ -23,11 +24,12 @@ class SankeyBuilder:
         transactions: Iterable[Transaction],
         styles: Mapping[str, CategoryStyle],
         *,
-        month: str | None,
-        owner: str | None,
-        currency: str | None,
-        include_inflows: bool | None = None,
         include_ignored: bool,
+        month: str | None = None,
+        owner: str | None = None,
+        currency: str | None = None,
+        period: PeriodFilter | None = None,
+        include_inflows: bool | None = None,
         include_income: bool | None = None,
     ) -> go.Figure:
         if include_inflows is None:
@@ -35,7 +37,7 @@ class SankeyBuilder:
         filtered = [
             transaction
             for transaction in transactions
-            if self._included(transaction, month, owner, currency, include_inflows, include_ignored)
+            if self._included(transaction, include_inflows, include_ignored, month, owner, currency, period)
         ]
 
         node_index: dict[str, int] = {}
@@ -97,24 +99,27 @@ class SankeyBuilder:
                 link={"source": sources, "target": targets, "value": values, "color": link_colours},
             )
         )
-        fig.update_layout(title_text="Household Cash-Flow Sankey", font={"size": 12}, margin={"l": 8, "r": 8, "t": 36, "b": 8})
+        fig.update_layout(title_text="Household Cash-Flow Sankey", font={"size": 12}, margin={"l": 8, "r": 8, "t": 36, "b": 8}, height=560)
         return fig
 
     @staticmethod
     def _included(
         transaction: Transaction,
-        month: str | None,
-        owner: str | None,
-        currency: str | None,
         include_inflows: bool,
         include_ignored: bool,
+        month: str | None = None,
+        owner: str | None = None,
+        currency: str | None = None,
+        period: PeriodFilter | None = None,
     ) -> bool:
         flow_type = flow_type_for_amount(transaction.amount)
         if flow_type is None:
             return False
         if not include_ignored and transaction.ignored:
             return False
-        if month and transaction.date.strftime("%Y-%m") != month:
+        if period is not None and not period.includes(transaction):
+            return False
+        if period is None and month and transaction.date.strftime("%Y-%m") != month:
             return False
         if owner and transaction.owner != owner:
             return False

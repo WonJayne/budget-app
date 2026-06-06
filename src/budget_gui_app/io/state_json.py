@@ -69,7 +69,7 @@ class StateJsonRepository:
                 owner=item.get("owner"),
                 assignment_source=item.get("assignment_source"),
                 ignored=bool(item.get("ignored", False)),
-                source_kind=item.get("source_kind", "imported"),
+                source_kind=item.get("source_kind") or ("manual" if item.get("source_file") in (None, "manual") else "imported"),
             )
             for item in data.get("transactions", [])
         )
