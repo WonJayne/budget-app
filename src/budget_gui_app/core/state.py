@@ -1,99 +1,68 @@
-"""Application state and update operations.
-
-The ``AppState`` class represents the complete in‑memory state of the
-budget application.  It holds all imported transactions, all
-classification rules and styling information for categories.  State is
-immutable: operations return new instances rather than modifying
-existing ones.  This approach simplifies reasoning about updates and
-facilitates persistence.
-"""
+"""Immutable application state and explicit update operations."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Dict, Iterable, Mapping, Optional, Tuple
+from typing import Iterable
 
-from .models import CategoryStyle, Rule, Transaction
+from .models import AppMetadata, CategoryStyle, Rule, Transaction
+from .rules import RuleEngine
 
 
 @dataclass(frozen=True)
 class AppState:
-    """Immutable container for the application’s state."""
-
-    transactions: Tuple[Transaction, ...] = ()
-    rules: Tuple[Rule, ...] = ()
-    category_styles: Dict[str, CategoryStyle] = None  # type: ignore[assignment]
-
-    def __post_init__(self) -> None:
-        # Ensure category_styles is a dict even if None passed
-        if self.category_styles is None:
-            object.__setattr__(self, "category_styles", {})
+    transactions: tuple[Transaction, ...] = ()
+    rules: tuple[Rule, ...] = ()
+    category_styles: tuple[CategoryStyle, ...] = ()
+    metadata: AppMetadata = AppMetadata()
 
     @staticmethod
     def empty() -> "AppState":
-        """Return a new, empty application state."""
-        return AppState(transactions=(), rules=(), category_styles={})
+        return AppState()
 
-    # Transaction operations
+    def category_style_map(self) -> dict[str, CategoryStyle]:
+        return {style.category: style for style in self.category_styles}
+
     def add_transactions(self, transactions: Iterable[Transaction]) -> "AppState":
-        """Return a new state with the provided transactions added.
+        existing_ids = {transaction.id for transaction in self.transactions}
+        added = [transaction for transaction in transactions if transaction.id not in existing_ids]
+        if not added:
+            return self
+        merged = self.transactions + tuple(added)
+        return replace(self, transactions=RuleEngine(self.rules).classify_many(merged))
 
-        Existing transactions are preserved.  Duplicate transactions
-        (identified by matching ``Transaction.id``) are ignored.  The
-        new transactions are appended in the order received.
-        """
-        existing_ids = {tx.id for tx in self.transactions}
-        new_list = list(self.transactions)
-        for tx in transactions:
-            if tx.id not in existing_ids:
-                new_list.append(tx)
-                existing_ids.add(tx.id)
-        return replace(self, transactions=tuple(new_list))
-
-    def update_transaction(self, transaction_id: str, category: Optional[str], owner: Optional[str], ignored: Optional[bool] = None) -> "AppState":
-        """Return a new state with an updated transaction.
-
-        Args:
-            transaction_id: Identifier of the transaction to update.
-            category: New category value (``None`` to unset).
-            owner: New owner value (``None`` to unset).
-            ignored: Optional new ignored flag.  If ``None``, the
-                existing ignored flag is preserved.
-
-        Returns:
-            A new state with the updated transaction.
-        """
-        updated = []
-        found = False
-        for tx in self.transactions:
-            if tx.id == transaction_id:
-                found = True
-                new_ignored = tx.ignored if ignored is None else ignored
-                updated.append(replace(tx, category=category, owner=owner, ignored=new_ignored))
-            else:
-                updated.append(tx)
-        if not found:
-            return self  # no change
-        return replace(self, transactions=tuple(updated))
-
-    # Rule operations
     def add_rule(self, rule: Rule) -> "AppState":
-        """Return a new state with the rule appended."""
-        return replace(self, rules=self.rules + (rule,))
+        return replace(self, rules=self.rules + (rule,)).reapply_rules()
+
+    def update_rule(self, rule: Rule) -> "AppState":
+        return replace(self, rules=tuple(rule if existing.id == rule.id else existing for existing in self.rules)).reapply_rules()
 
     def remove_rule(self, rule_id: str) -> "AppState":
-        """Return a new state with the specified rule removed."""
-        filtered = tuple(r for r in self.rules if r.id != rule_id)
-        return replace(self, rules=filtered)
+        return replace(self, rules=tuple(rule for rule in self.rules if rule.id != rule_id)).reapply_rules()
 
-    # Category style operations
-    def set_category_colour(self, category: str, colour: Optional[str]) -> "AppState":
-        """Return a new state with the colour assigned to the category."""
-        styles = dict(self.category_styles)
-        styles[category] = CategoryStyle(category=category, colour=colour)
-        return replace(self, category_styles=styles)
+    def manually_assign_transaction(self, transaction_id: str, category: str, owner: str) -> "AppState":
+        updated = tuple(
+            replace(transaction, category=category, owner=owner, assignment_source="manual")
+            if transaction.id == transaction_id
+            else transaction
+            for transaction in self.transactions
+        )
+        return replace(self, transactions=updated)
 
-    # Clearing
+    def ignore_transaction(self, transaction_id: str, ignored: bool = True) -> "AppState":
+        updated = tuple(
+            replace(transaction, ignored=ignored) if transaction.id == transaction_id else transaction
+            for transaction in self.transactions
+        )
+        return replace(self, transactions=updated)
+
+    def set_category_colour(self, category: str, colour: str | None) -> "AppState":
+        styles = self.category_style_map()
+        styles[category] = CategoryStyle(category=category, colour=colour or None)
+        return replace(self, category_styles=tuple(styles[cat] for cat in sorted(styles)))
+
     def clear(self) -> "AppState":
-        """Return a new, empty state."""
-        return AppState.empty()
+        return AppState(metadata=self.metadata)
+
+    def reapply_rules(self) -> "AppState":
+        return replace(self, transactions=RuleEngine(self.rules).classify_many(self.transactions))
