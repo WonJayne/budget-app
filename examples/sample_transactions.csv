@@ -1,9 +1,21 @@
 date,account,description,amount,currency
-2026-05-01,shared_zkb,Salary Flo,5000,CHF
-2026-05-01,shared_zkb,Salary Wife,4500,CHF
+2026-05-01,shared_zkb,Salary Flo,5000.00,CHF
+2026-05-01,shared_zkb,Salary Wife,4500.00,CHF
 2026-05-02,shared_zkb,Migros Wipkingen,-84.30,CHF
-2026-05-03,shared_zkb,SBB Mobile,-42.00,CHF
-2026-05-04,shared_zkb,Swica Insurance,-1000,CHF
-2026-05-05,shared_zkb,ETF Purchase,-1500,CHF
+2026-05-03,shared_zkb,SBB Mobile Tickets,-42.00,CHF
+2026-05-04,shared_zkb,Swica Insurance,-1000.00,CHF
+2026-05-05,shared_zkb,ETF Purchase,-1500.00,CHF
 2026-05-06,flo_card,Spotify Subscription,-12.90,CHF
 2026-05-07,wife_card,Cosmetics Shop,-40.00,CHF
+2026-05-08,shared_zkb,Apartment Rent,-2600.00,CHF
+2026-05-09,shared_zkb,Coop Supermarkt,-126.45,CHF
+2026-05-10,shared_zkb,Swisscom Internet,-89.90,CHF
+2026-05-11,shared_zkb,EWZ Electricity,-73.20,CHF
+2026-05-12,flo_card,Restaurant Helvetia,-118.00,CHF
+2026-05-13,wife_card,Daycare Monthly Fee,-820.00,CHF
+2026-05-15,shared_zkb,Tax Prepayment,-1200.00,CHF
+2026-06-01,shared_zkb,Salary Flo,5000.00,CHF
+2026-06-01,shared_zkb,Salary Wife,4500.00,CHF
+2026-06-02,shared_zkb,Migros Wipkingen,-91.10,CHF
+2026-06-04,shared_zkb,SBB Mobile Tickets,-38.50,CHF
+2026-06-06,flo_card,Running Shoes,-159.90,CHF

@@ -44,8 +44,8 @@ uv run pytest
 
 ## Examples
 
-- `examples/sample_transactions.csv` contains a small normalized CSV import sample.
-- `examples/sample_state.json` contains a small state export sample.
+- `examples/sample_transactions.csv` contains a richer normalized CSV import sample with multiple months, accounts, incomes, shared costs, and personal expenses.
+- `examples/sample_state.json` contains a richer state export sample with rules, category colours, classified transactions, and one unclassified transaction for the review queue.
 
 ## Preliminary PyInstaller packaging note
 
