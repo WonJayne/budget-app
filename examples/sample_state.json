@@ -11,179 +11,207 @@
       "amount": 5000.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
-      "category": "Income",
-      "owner": "shared",
+      "category": "Salary",
+      "owner": "Flo",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "4cc05808d56eb2ff",
+      "id": "e0487cb0c7440acb",
       "date": "2026-05-01",
       "account": "shared_zkb",
-      "description": "Salary Wife",
+      "description": "Salary Nina",
       "amount": 4500.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
-      "category": "Income",
-      "owner": "shared",
+      "category": "Salary",
+      "owner": "Nina",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "ed5da428f2006ada",
+      "id": "ab022b9a16ca7484",
       "date": "2026-05-02",
+      "account": "shared_zkb",
+      "description": "Gift from family",
+      "amount": 300.0,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Gift",
+      "owner": "Shared",
+      "assignment_source": "rule",
+      "ignored": false,
+      "source_kind": "imported"
+    },
+    {
+      "id": "995b2119e1f57c99",
+      "date": "2026-05-03",
       "account": "shared_zkb",
       "description": "Migros Wipkingen",
       "amount": -84.3,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Groceries",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "551b139f69a7fd69",
-      "date": "2026-05-03",
+      "id": "44d8499b8de69e5f",
+      "date": "2026-05-04",
       "account": "shared_zkb",
       "description": "SBB Mobile Tickets",
       "amount": -42.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
-      "category": "Mobility",
-      "owner": "shared",
+      "category": "Transport",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "d2bf03949ed0f732",
-      "date": "2026-05-04",
+      "id": "81fdf22a457aa62f",
+      "date": "2026-05-05",
       "account": "shared_zkb",
       "description": "Swica Insurance",
       "amount": -1000.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Insurance",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "b509c885f9c1446d",
-      "date": "2026-05-05",
+      "id": "5051b0a2f4477ab5",
+      "date": "2026-05-06",
       "account": "shared_zkb",
       "description": "ETF Purchase",
       "amount": -1500.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Investments",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "88f4dfd9f702e478",
-      "date": "2026-05-06",
+      "id": "0d07eb9a37c8dbac",
+      "date": "2026-05-07",
       "account": "flo_card",
       "description": "Spotify Subscription",
       "amount": -12.9,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Subscriptions",
-      "owner": "flo",
+      "owner": "Flo",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "86266b1412cb630c",
-      "date": "2026-05-07",
-      "account": "wife_card",
-      "description": "Cosmetics Shop",
+      "id": "3d9c9ef8a4ec517c",
+      "date": "2026-05-08",
+      "account": "nina_card",
+      "description": "Personal Care Shop",
       "amount": -40.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
-      "category": "Personal",
-      "owner": "wife",
+      "category": "Personal care",
+      "owner": "Nina",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "a5105caef472bb6d",
-      "date": "2026-05-08",
+      "id": "8ca3ba97f48391aa",
+      "date": "2026-05-09",
       "account": "shared_zkb",
       "description": "Apartment Rent",
       "amount": -2600.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Housing",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "3823548ffef2c66a",
-      "date": "2026-05-09",
+      "id": "7e7004a8413ae934",
+      "date": "2026-05-10",
       "account": "shared_zkb",
       "description": "Coop Supermarkt",
       "amount": -126.45,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Groceries",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "e3413b8660b8bbde",
-      "date": "2026-05-10",
+      "id": "cb0937797ff9d9a0",
+      "date": "2026-05-11",
       "account": "shared_zkb",
       "description": "Swisscom Internet",
       "amount": -89.9,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Utilities",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "a8b8ab16054702a2",
-      "date": "2026-05-11",
+      "id": "56d5580d22d628a6",
+      "date": "2026-05-12",
       "account": "shared_zkb",
       "description": "EWZ Electricity",
       "amount": -73.2,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Utilities",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "64098e9c6d562ec4",
-      "date": "2026-05-12",
+      "id": "d8b029a52d50abe1",
+      "date": "2026-05-13",
       "account": "flo_card",
       "description": "Restaurant Helvetia",
       "amount": -118.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
-      "category": "Eating Out",
-      "owner": "shared",
+      "category": "Eating out",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "5e5a415c7c2d2647",
-      "date": "2026-05-13",
-      "account": "wife_card",
+      "id": "b919d90f18b44357",
+      "date": "2026-05-14",
+      "account": "nina_card",
       "description": "Daycare Monthly Fee",
       "amount": -820.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Childcare",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
       "id": "e7fa043a71697247",
@@ -194,9 +222,10 @@
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Taxes",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
       "id": "93f1721718414877",
@@ -206,23 +235,25 @@
       "amount": 5000.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
-      "category": "Income",
-      "owner": "shared",
+      "category": "Salary",
+      "owner": "Flo",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
-      "id": "4bd64d9cdf2bdfbe",
+      "id": "dad997c0131d1eb4",
       "date": "2026-06-01",
       "account": "shared_zkb",
-      "description": "Salary Wife",
+      "description": "Salary Nina",
       "amount": 4500.0,
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
-      "category": "Income",
-      "owner": "shared",
+      "category": "Salary",
+      "owner": "Nina",
       "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
       "id": "1b5d485ee5819a70",
@@ -233,22 +264,10 @@
       "currency": "CHF",
       "source_file": "sample_transactions.csv",
       "category": "Groceries",
-      "owner": "shared",
+      "owner": "Shared",
       "assignment_source": "rule",
-      "ignored": false
-    },
-    {
-      "id": "7455dacd3cf61edd",
-      "date": "2026-06-04",
-      "account": "shared_zkb",
-      "description": "SBB Mobile Tickets",
-      "amount": -38.5,
-      "currency": "CHF",
-      "source_file": "sample_transactions.csv",
-      "category": "Mobility",
-      "owner": "shared",
-      "assignment_source": "rule",
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     },
     {
       "id": "b554885a7b07f54f",
@@ -261,129 +280,156 @@
       "category": null,
       "owner": null,
       "assignment_source": null,
-      "ignored": false
+      "ignored": false,
+      "source_kind": "imported"
     }
   ],
   "rules": [
     {
-      "id": "salary",
-      "pattern": "salary",
-      "category": "Income",
-      "owner": "shared",
+      "id": "salary-flo",
+      "pattern": "Salary Flo",
+      "category": "Salary",
+      "owner": "Flo",
+      "rule_type": "inflow",
       "priority": 100
     },
     {
+      "id": "salary-nina",
+      "pattern": "Salary Nina",
+      "category": "Salary",
+      "owner": "Nina",
+      "rule_type": "inflow",
+      "priority": 100
+    },
+    {
+      "id": "gift",
+      "pattern": "Gift",
+      "category": "Gift",
+      "owner": "Shared",
+      "rule_type": "inflow",
+      "priority": 50
+    },
+    {
       "id": "migros",
-      "pattern": "migros",
+      "pattern": "Migros",
       "category": "Groceries",
-      "owner": "shared",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "coop",
-      "pattern": "coop",
+      "pattern": "Coop",
       "category": "Groceries",
-      "owner": "shared",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "sbb",
-      "pattern": "sbb",
-      "category": "Mobility",
-      "owner": "shared",
+      "pattern": "SBB",
+      "category": "Transport",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "swica",
-      "pattern": "swica",
+      "pattern": "Swica",
       "category": "Insurance",
-      "owner": "shared",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "etf",
-      "pattern": "etf",
+      "pattern": "ETF",
       "category": "Investments",
-      "owner": "shared",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "spotify",
-      "pattern": "spotify",
+      "pattern": "Spotify",
       "category": "Subscriptions",
-      "owner": "flo",
+      "owner": "Flo",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
-      "id": "cosmetics",
-      "pattern": "cosmetics",
-      "category": "Personal",
-      "owner": "wife",
+      "id": "personal-care",
+      "pattern": "Personal Care",
+      "category": "Personal care",
+      "owner": "Nina",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "rent",
-      "pattern": "rent",
+      "pattern": "Rent",
       "category": "Housing",
-      "owner": "shared",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "swisscom",
-      "pattern": "swisscom",
+      "pattern": "Swisscom",
       "category": "Utilities",
-      "owner": "shared",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "electricity",
-      "pattern": "electricity",
+      "pattern": "Electricity",
       "category": "Utilities",
-      "owner": "shared",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "restaurant",
-      "pattern": "restaurant",
-      "category": "Eating Out",
-      "owner": "shared",
+      "pattern": "Restaurant",
+      "category": "Eating out",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "daycare",
-      "pattern": "daycare",
+      "pattern": "Daycare",
       "category": "Childcare",
-      "owner": "shared",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     },
     {
       "id": "tax",
-      "pattern": "tax",
+      "pattern": "Tax",
       "category": "Taxes",
-      "owner": "shared",
+      "owner": "Shared",
+      "rule_type": "outflow",
       "priority": 20
     }
   ],
   "category_styles": [
     {
-      "category": "Childcare",
-      "colour": "#a855f7"
+      "category": "Salary",
+      "colour": "#16a34a"
     },
     {
-      "category": "Eating Out",
-      "colour": "#ef4444"
+      "category": "Gift",
+      "colour": "#84cc16"
     },
     {
       "category": "Groceries",
       "colour": "#22c55e"
     },
     {
-      "category": "Housing",
-      "colour": "#64748b"
-    },
-    {
-      "category": "Income",
-      "colour": "#16a34a"
+      "category": "Transport",
+      "colour": "#0ea5e9"
     },
     {
       "category": "Insurance",
@@ -394,24 +440,32 @@
       "colour": "#f59e0b"
     },
     {
-      "category": "Mobility",
-      "colour": "#0ea5e9"
-    },
-    {
-      "category": "Personal",
-      "colour": "#f97316"
-    },
-    {
       "category": "Subscriptions",
       "colour": "#ec4899"
     },
     {
-      "category": "Taxes",
-      "colour": "#475569"
+      "category": "Personal care",
+      "colour": "#f97316"
+    },
+    {
+      "category": "Housing",
+      "colour": "#64748b"
     },
     {
       "category": "Utilities",
       "colour": "#06b6d4"
+    },
+    {
+      "category": "Eating out",
+      "colour": "#ef4444"
+    },
+    {
+      "category": "Childcare",
+      "colour": "#a855f7"
+    },
+    {
+      "category": "Taxes",
+      "colour": "#475569"
     }
   ]
 }

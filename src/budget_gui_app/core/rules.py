@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Iterable
 
-from .models import Rule, Transaction
+from .models import Rule, Transaction, flow_type_for_amount
 
 
 class RuleEngine:
@@ -24,8 +24,12 @@ class RuleEngine:
         if transaction.assignment_source == "rule":
             base = replace(transaction, category=None, owner=None, assignment_source=None)
 
+        flow_type = flow_type_for_amount(base.amount)
+        if flow_type is None:
+            return base
+
         for rule in self._rules:
-            if rule.matches(base.description):
+            if rule.rule_type == flow_type and rule.matches(base.description):
                 return replace(base, category=rule.category, owner=rule.owner, assignment_source="rule")
         return base
 

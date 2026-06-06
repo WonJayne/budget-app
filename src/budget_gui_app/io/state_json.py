@@ -34,11 +34,19 @@ class StateJsonRepository:
                     "owner": tx.owner,
                     "assignment_source": tx.assignment_source,
                     "ignored": tx.ignored,
+                    "source_kind": tx.source_kind,
                 }
                 for tx in state.transactions
             ],
             "rules": [
-                {"id": rule.id, "pattern": rule.pattern, "category": rule.category, "owner": rule.owner, "priority": rule.priority}
+                {
+                    "id": rule.id,
+                    "pattern": rule.pattern,
+                    "category": rule.category,
+                    "owner": rule.owner,
+                    "rule_type": rule.rule_type,
+                    "priority": rule.priority,
+                }
                 for rule in state.rules
             ],
             "category_styles": [
@@ -61,6 +69,7 @@ class StateJsonRepository:
                 owner=item.get("owner"),
                 assignment_source=item.get("assignment_source"),
                 ignored=bool(item.get("ignored", False)),
+                source_kind=item.get("source_kind", "imported"),
             )
             for item in data.get("transactions", [])
         )
@@ -70,6 +79,7 @@ class StateJsonRepository:
                 pattern=item["pattern"],
                 category=item["category"],
                 owner=item["owner"],
+                rule_type=item.get("rule_type", "outflow"),
                 priority=int(item.get("priority", 0)),
             )
             for item in data.get("rules", [])
