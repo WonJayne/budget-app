@@ -10,6 +10,7 @@ from typing import Literal
 AssignmentSource = Literal["manual", "rule"] | None
 FlowType = Literal["inflow", "outflow"]
 SourceKind = Literal["imported", "manual"]
+EntrySource = Literal["csv", "manual"]
 
 
 def flow_type_for_amount(amount: float) -> FlowType | None:
@@ -40,6 +41,8 @@ class Transaction:
     assignment_source: AssignmentSource = None
     ignored: bool = False
     source_kind: SourceKind = "imported"
+    entry_source: EntrySource = "csv"
+    edited: bool = False
 
     @staticmethod
     def make_id(date: date, account: str, description: str, amount: float, currency: str) -> str:

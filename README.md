@@ -43,6 +43,11 @@ The **Data / Rules / Review** tab supports:
 - CSV import;
 - JSON state import/export plus merged CSV export;
 - clearing the current local state with confirmation;
+- an **All entries** ledger for CSV-imported and manual entries;
+- ledger filtering by All/Year/Month period, source, flow type, owner, category, and status;
+- editing imported CSV entries without changing their stable transaction IDs;
+- ignoring/unignoring duplicate or unwanted imported entries while keeping them traceable;
+- deleting entries, with imported entries intended to be ignored first when possible;
 - adding manual inflow and outflow entries in the selected All/Year/Month period;
 - editing and deleting manual entries;
 - adding, editing, and deleting inflow/outflow rules;
@@ -53,7 +58,13 @@ The **Data / Rules / Review** tab supports:
 
 Rules are case-insensitive description substring matches. Each rule has a visible `inflow` or `outflow` type, so inflow rules apply only to positive transactions and outflow rules apply only to negative transactions. Rule priority is respected, and manual assignments survive rule reapplication. Editing or deleting rules removes stale rule-based classifications.
 
-Manual entries are stored as local transactions with `source_kind="manual"`, no source file, and manual assignment provenance. Inflow entries are stored as positive amounts; outflow entries are stored as negative amounts.
+The **All entries** ledger is the main source-of-truth view for the cash-flow data that creates the Sankey. It shows date, source (`csv` or `manual`), account, flow type, description, amount, currency, category, owner, assignment source, ignored status, and row actions. The same explicit period model used by the rest of the app applies to the ledger: **All** shows every entry, **Year** shows the selected year, and **Month** shows only the selected month.
+
+Imported CSV entries can be edited in the ledger when a bank export needs correction. Editing preserves the original transaction ID so duplicate detection and saved state stay consistent. The edit dialog lets users change date, flow type, description, amount, currency, account, category, owner, and ignored status. Users can type positive amounts for both inflows and outflows; the selected flow type normalises storage so inflows remain positive and outflows remain negative.
+
+For duplicate CSV rows or unwanted imported entries, use **Ignore** whenever possible. Ignored entries remain visible through the ledger status filter, can be unignored later, and are excluded from Sankey and summaries by default.
+
+Manual entries are stored as local transactions with `source_kind="manual"`/`entry_source="manual"`, no source file, and manual assignment provenance. Inflow entries are stored as positive amounts; outflow entries are stored as negative amounts. Manual entries can be added from the existing manual-entry controls and edited later through the same ledger edit dialog.
 
 ## Visualisation
 
@@ -69,7 +80,7 @@ The page also shows summary cards for total inflow, total outflow, balance, pote
 
 ## Category colours
 
-Category colours are edited with a compact dropdown and palette chips. A custom hex input is available under an advanced section, but normal use should only require clicking a colour. Colours are saved in JSON state export and reapplied to the Sankey with safe fallback colours when a category has no saved colour.
+Category colours are edited with a compact dropdown, a large current-colour preview, and visible palette chips that show their actual colours. Pick a category, click a palette chip, then save the colour. A native colour picker and custom hex input are available under an advanced section, but normal use does not require typing hex codes. **Reset to automatic** removes the stored custom colour so the Sankey uses safe fallback colours. Saved category colours are included in JSON state export/import and reapplied to Sankey category nodes where possible.
 
 ## How-to and demo
 

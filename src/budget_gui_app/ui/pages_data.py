@@ -13,6 +13,7 @@ from typing import Callable
 from nicegui import events, ui
 
 from ..core.importers import TransactionImporter
+from ..core.ledger import LedgerFilters, filter_ledger_transactions, transaction_entry_source
 from ..core.models import FlowType, Rule, Transaction, flow_type_for_amount
 from ..core.periods import PeriodFilter, available_years, default_period_filter
 from ..core.state import AppState, DEFAULT_ACCOUNT, DEFAULT_CURRENCY
@@ -82,6 +83,11 @@ def selected_value(select, new_value) -> str:
 @dataclass
 class DataFilters:
     period: PeriodFilter | None = None
+    source: str = "all"
+    flow_type: str = "all"
+    owner: str = "all"
+    category: str = "all"
+    status: str = "all"
 
 
 def build_data_page(holder: UiState) -> None:
@@ -239,6 +245,62 @@ def build_data_page(holder: UiState) -> None:
                 ui.button("Save", on_click=save_manual)
         dialog.open()
 
+    def edit_entry_dialog(transaction_id: str) -> None:
+        transaction = next(tx for tx in holder.state.transactions if tx.id == transaction_id)
+        catalog = holder.state.option_catalog()
+        initial_flow = transaction.flow_type or "outflow"
+        with ui.dialog() as dialog, ui.card().classes("w-[30rem]"):
+            ui.label(f"Edit ledger entry ({transaction_entry_source(transaction)})").classes("text-lg font-bold")
+            rule_type = ui.select(["inflow", "outflow"], label="Flow type", value=initial_flow).classes("w-full")
+            tx_date = ui.input("Date", value=transaction.date.isoformat()).props("type=date").classes("w-full")
+            description = ui.input("Description", value=transaction.description).classes("w-full")
+            amount = ui.number("Amount (positive is fine)", value=abs(transaction.amount), format="%.2f").classes("w-full")
+            currency_select, currency_new = select_or_new("Currency", catalog.currencies, transaction.currency)
+            account_select, account_new = select_or_new("Account", catalog.accounts, transaction.account)
+            category_select, category_new = select_or_new("Category", category_options(initial_flow), transaction.category)
+
+            def update_category_options(event) -> None:
+                category_select.set_options(list(category_options(event.value)) + [OTHER_OPTION])
+
+            rule_type.on_value_change(update_category_options)
+            owner_select, owner_new = select_or_new("Owner", catalog.owners, transaction.owner)
+            ignored = ui.switch("Ignored", value=transaction.ignored)
+
+            def save_entry() -> None:
+                set_state(
+                    holder.state.update_transaction(
+                        transaction.id,
+                        flow_type=rule_type.value,
+                        tx_date=date.fromisoformat(tx_date.value),
+                        description=description.value,
+                        amount=float(amount.value or 0),
+                        currency=selected_value(currency_select, currency_new),
+                        account=selected_value(account_select, account_new),
+                        category=selected_value(category_select, category_new),
+                        owner=selected_value(owner_select, owner_new),
+                        ignored=bool(ignored.value),
+                    )
+                )
+                dialog.close()
+                ui.notify("Ledger entry saved.")
+
+            with ui.row():
+                ui.button("Cancel", on_click=dialog.close)
+                ui.button("Save", on_click=save_entry)
+        dialog.open()
+
+    def confirm_delete_transaction(transaction_id: str) -> None:
+        transaction = next(tx for tx in holder.state.transactions if tx.id == transaction_id)
+        with ui.dialog() as dialog, ui.card():
+            ui.label(f"Delete this {transaction_entry_source(transaction)} entry?").classes("font-bold")
+            ui.label(f"{transaction.date.isoformat()} • {transaction.description} • {transaction.amount:.2f} {transaction.currency}")
+            if transaction_entry_source(transaction) == "csv":
+                ui.label("Ignoring imported duplicates is usually better because it is reversible.").classes("text-sm text-orange-700")
+            with ui.row():
+                ui.button("Cancel", on_click=dialog.close)
+                ui.button("Delete", color="negative", on_click=lambda: (set_state(holder.state.delete_transaction(transaction_id)), dialog.close(), ui.notify("Entry deleted.")))
+        dialog.open()
+
     @ui.refreshable
     def content() -> None:
         with ui.column().classes("w-full gap-4"):
@@ -255,7 +317,7 @@ def build_data_page(holder: UiState) -> None:
             if filters.period.year not in years:
                 filters.period = default_period_filter(holder.state.transactions)
             with ui.card().classes("w-full"):
-                ui.label("Manual entries period").classes("font-bold")
+                ui.label("Entries period").classes("font-bold")
                 with ui.row().classes("items-center"):
                     mode_select = ui.select(["all", "year", "month"], label="View", value=filters.period.mode).classes("w-32")
                     year_select = ui.select(list(years), label="Year", value=filters.period.year or years[-1]).classes("w-32")
@@ -268,7 +330,93 @@ def build_data_page(holder: UiState) -> None:
                     mode_select.on_value_change(lambda _: update_period())
                     year_select.on_value_change(lambda _: update_period())
                     month_select.on_value_change(lambda _: update_period())
-                ui.label(f"Showing manual entries for: {filters.period.label}").classes("text-sm text-gray-600")
+                ui.label(f"Showing entries for: {filters.period.label}").classes("text-sm text-gray-600")
+
+            ui.label("All entries").classes("text-xl font-bold")
+            ui.label("Inspect and edit the CSV-imported and manual entries that feed the Sankey.").classes("text-sm text-gray-600")
+            catalog = holder.state.option_catalog()
+            all_categories = tuple(sorted(set(catalog.inflow_categories) | set(catalog.outflow_categories)))
+            with ui.card().classes("w-full"):
+                with ui.row().classes("items-center gap-2"):
+                    source_select = ui.select(["all", "csv", "manual"], label="Source", value=filters.source).classes("w-28")
+                    flow_select = ui.select(["all", "inflow", "outflow"], label="Flow", value=filters.flow_type).classes("w-28")
+                    owner_select = ui.select(["all"] + list(catalog.owners), label="Owner", value=filters.owner if filters.owner in ["all"] + list(catalog.owners) else "all").classes("w-36")
+                    category_select = ui.select(["all"] + list(all_categories), label="Category", value=filters.category if filters.category in ["all"] + list(all_categories) else "all").classes("w-40")
+                    status_select = ui.select(["all", "classified", "unclassified", "ignored"], label="Status", value=filters.status).classes("w-36")
+
+                    def update_ledger_filters() -> None:
+                        filters.source = source_select.value
+                        filters.flow_type = flow_select.value
+                        filters.owner = owner_select.value
+                        filters.category = category_select.value
+                        filters.status = status_select.value
+                        content.refresh()
+
+                    source_select.on_value_change(lambda _: update_ledger_filters())
+                    flow_select.on_value_change(lambda _: update_ledger_filters())
+                    owner_select.on_value_change(lambda _: update_ledger_filters())
+                    category_select.on_value_change(lambda _: update_ledger_filters())
+                    status_select.on_value_change(lambda _: update_ledger_filters())
+
+                ledger_filters = LedgerFilters(
+                    period=filters.period,
+                    source=filters.source,
+                    flow_type=filters.flow_type,
+                    owner=filters.owner,
+                    category=filters.category,
+                    status=filters.status,
+                )
+                ledger_rows = [
+                    {
+                        "id": tx.id,
+                        "date": tx.date.isoformat(),
+                        "source": transaction_entry_source(tx),
+                        "account": tx.account,
+                        "flow_type": flow_label(tx.amount),
+                        "description": tx.description,
+                        "amount": f"{tx.amount:.2f}",
+                        "currency": tx.currency,
+                        "category": tx.category or "",
+                        "owner": tx.owner or "",
+                        "assignment_source": tx.assignment_source or "",
+                        "ignored": "yes" if tx.ignored else "no",
+                        "actions": "",
+                    }
+                    for tx in filter_ledger_transactions(holder.state.transactions, ledger_filters)
+                ]
+                if ledger_rows:
+                    ledger_table = ui.table(
+                        columns=[
+                            {"name": "date", "label": "Date", "field": "date", "align": "left"},
+                            {"name": "source", "label": "Source", "field": "source"},
+                            {"name": "account", "label": "Account", "field": "account", "align": "left"},
+                            {"name": "flow_type", "label": "Flow", "field": "flow_type"},
+                            {"name": "description", "label": "Description", "field": "description", "align": "left"},
+                            {"name": "amount", "label": "Amount", "field": "amount", "align": "right"},
+                            {"name": "currency", "label": "Cur", "field": "currency"},
+                            {"name": "category", "label": "Category", "field": "category", "align": "left"},
+                            {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
+                            {"name": "assignment_source", "label": "Assign", "field": "assignment_source"},
+                            {"name": "ignored", "label": "Ignored", "field": "ignored"},
+                            {"name": "actions", "label": "Actions", "field": "actions"},
+                        ],
+                        rows=ledger_rows,
+                        row_key="id",
+                    ).classes("w-full")
+                    ledger_table.add_slot("body-cell-actions", """
+                        <q-td :props="props">
+                          <q-btn dense flat color="primary" label="Edit" @click="$parent.$emit('edit', props.row.id)" />
+                          <q-btn dense flat color="warning" :label="props.row.ignored === 'yes' ? 'Unignore' : 'Ignore'" @click="$parent.$emit('toggle-ignore', props.row.id)" />
+                          <q-btn dense flat color="negative" label="Delete" @click="$parent.$emit('delete', props.row.id)" />
+                          <q-btn dense flat color="secondary" label="Rule" @click="$parent.$emit('rule', props.row.id)" />
+                        </q-td>
+                    """)
+                    ledger_table.on("edit", lambda event: edit_entry_dialog(event.args))
+                    ledger_table.on("toggle-ignore", lambda event: (set_state(holder.state.ignore_transaction(event.args, not next(tx for tx in holder.state.transactions if tx.id == event.args).ignored)), ui.notify("Ignored status updated.")))
+                    ledger_table.on("delete", lambda event: confirm_delete_transaction(event.args))
+                    ledger_table.on("rule", lambda event: create_rule_dialog(event.args))
+                else:
+                    ui.label("No entries match the current filters.").classes("text-gray-500")
 
             ui.label("Manual cash-flow entries").classes("text-xl font-bold")
             with ui.row():
