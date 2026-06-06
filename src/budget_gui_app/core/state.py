@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from typing import Iterable
 
-from .models import AppMetadata, CategoryStyle, FlowType, Rule, Transaction, flow_type_for_amount
+from .models import AppMetadata, AppProfile, CategoryStyle, FlowType, Rule, Transaction, flow_type_for_amount
 from .rules import RuleEngine
 
 DEFAULT_OWNERS = ("Flo", "Nina", "Shared")
@@ -31,6 +31,7 @@ class AppState:
     rules: tuple[Rule, ...] = ()
     category_styles: tuple[CategoryStyle, ...] = ()
     metadata: AppMetadata = AppMetadata()
+    profile: AppProfile = AppProfile()
 
     @staticmethod
     def empty() -> "AppState":
@@ -40,11 +41,11 @@ class AppState:
         return {style.category: style for style in self.category_styles}
 
     def option_catalog(self) -> OptionCatalog:
-        owners = set(DEFAULT_OWNERS)
-        inflow_categories: set[str] = set(DEFAULT_INFLOW_CATEGORIES)
-        outflow_categories: set[str] = set(DEFAULT_OUTFLOW_CATEGORIES)
-        currencies = {DEFAULT_CURRENCY}
-        accounts = {DEFAULT_ACCOUNT}
+        owners = set(DEFAULT_OWNERS) | set(self.profile.owners)
+        inflow_categories: set[str] = set(DEFAULT_INFLOW_CATEGORIES) | set(self.profile.inflow_categories)
+        outflow_categories: set[str] = set(DEFAULT_OUTFLOW_CATEGORIES) | set(self.profile.outflow_categories)
+        currencies = {DEFAULT_CURRENCY} | set(self.profile.currencies)
+        accounts = {DEFAULT_ACCOUNT} | set(self.profile.accounts)
 
         for transaction in self.transactions:
             if transaction.owner:
@@ -234,8 +235,16 @@ class AppState:
             styles.pop(category, None)
         return replace(self, category_styles=tuple(styles[cat] for cat in sorted(styles)))
 
+    def clear_transactions(self) -> "AppState":
+        """Remove ledger/manual entries while keeping rules, colours, and metadata."""
+        return replace(self, transactions=())
+
+    def clear_all_data(self) -> "AppState":
+        """Reset transactions, rules, colours, and metadata to a fresh local state."""
+        return AppState.empty()
+
     def clear(self) -> "AppState":
-        return AppState(metadata=self.metadata)
+        return self.clear_all_data()
 
     def reapply_rules(self) -> "AppState":
         return replace(self, transactions=RuleEngine(self.rules).classify_many(self.transactions))

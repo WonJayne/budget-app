@@ -2,6 +2,13 @@
   "metadata": {
     "schema_version": 1
   },
+  "profile": {
+    "owners": [],
+    "inflow_categories": [],
+    "outflow_categories": [],
+    "currencies": [],
+    "accounts": []
+  },
   "transactions": [
     {
       "id": "f40104ada769ed8c",
