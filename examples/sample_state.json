@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "schema_version": 1
+  },
+  "transactions": [
+    {
+      "id": "5ecb23c1643024e0",
+      "date": "2026-05-01",
+      "account": "shared_zkb",
+      "description": "Salary Flo",
+      "amount": 5000.0,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Income",
+      "owner": "shared",
+      "assignment_source": "rule",
+      "ignored": false
+    },
+    {
+      "id": "301f84ff4bb1c90b",
+      "date": "2026-05-02",
+      "account": "shared_zkb",
+      "description": "Migros Wipkingen",
+      "amount": -84.3,
+      "currency": "CHF",
+      "source_file": "sample_transactions.csv",
+      "category": "Groceries",
+      "owner": "shared",
+      "assignment_source": "rule",
+      "ignored": false
+    }
+  ],
+  "rules": [
+    {
+      "id": "salary",
+      "pattern": "salary",
+      "category": "Income",
+      "owner": "shared",
+      "priority": 0
+    },
+    {
+      "id": "migros",
+      "pattern": "migros",
+      "category": "Groceries",
+      "owner": "shared",
+      "priority": 0
+    }
+  ],
+  "category_styles": [
+    {
+      "category": "Groceries",
+      "colour": "#22c55e"
+    }
+  ]
+}

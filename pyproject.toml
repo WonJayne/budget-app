@@ -1,21 +1,23 @@
-[tool.poetry]
-name = "budget_gui_app"
+[project]
+name = "budget-gui-app"
 version = "0.1.0"
-description = "Dynamic local budget prototype with review workflow and Sankey dashboard"
-authors = ["Your Name <you@example.com>"]
+description = "Local-only household budget app with CSV import, rules, review, and Sankey dashboard"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "nicegui>=2.0",
+  "pandas>=2.2",
+  "plotly>=5.20",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-pandas = "^2.2"
-plotly = "^5.20"
-matplotlib = "^3.8"
+[project.scripts]
+budget-app = "budget_gui_app.app:main"
 
-[tool.poetry.dev-dependencies]
-pytest = "^7.0"
-
-[tool.poetry.scripts]
-budget-gui-app = "budget_gui_app.ui.main:run_app"
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+]
 
 [build-system]
-requires = ["poetry-core>=1.5.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

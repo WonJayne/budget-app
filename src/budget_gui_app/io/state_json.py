@@ -1,70 +1,57 @@
-"""JSON persistence for the application state.
-
-This module provides utility functions to serialise and deserialise
-``AppState`` instances to and from JSON files.  The JSON format is
-kept simple and human‑readable.  Dates are stored as ISO strings.
-"""
+"""JSON import/export for complete application state."""
 
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any
 
-from ..core.models import CategoryStyle, Rule, Transaction
+from ..core.models import AppMetadata, CategoryStyle, Rule, Transaction
 from ..core.state import AppState
 
 
-def save_state(state: AppState, path: Path) -> None:
-    """Serialise the entire application state to a JSON file."""
-    obj: Dict[str, Any] = {}
-    # Transactions
-    obj["transactions"] = [
-        {
-            "id": tx.id,
-            "date": tx.date.isoformat(),
-            "account": tx.account,
-            "description": tx.description,
-            "amount": tx.amount,
-            "currency": tx.currency,
-            "source_file": tx.source_file,
-            "category": tx.category,
-            "owner": tx.owner,
-            "ignored": tx.ignored,
-        }
-        for tx in state.transactions
-    ]
-    # Rules
-    obj["rules"] = [
-        {
-            "id": r.id,
-            "pattern": r.pattern,
-            "category": r.category,
-            "owner": r.owner,
-            "priority": r.priority,
-        }
-        for r in state.rules
-    ]
-    # Category styles
-    obj["category_styles"] = {
-        cat: {"category": style.category, "colour": style.colour}
-        for cat, style in state.category_styles.items()
-    }
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(obj, f, indent=2)
+class StateJsonRepository:
+    def save(self, state: AppState, path: Path) -> None:
+        path.write_text(json.dumps(self.to_dict(state), indent=2), encoding="utf-8")
 
+    def load(self, path: Path) -> AppState:
+        return self.from_dict(json.loads(path.read_text(encoding="utf-8")))
 
-def load_state(path: Path) -> AppState:
-    """Load application state from a JSON file."""
-    with open(path, "r", encoding="utf-8") as f:
-        obj = json.load(f)
-    txs = []
-    for item in obj.get("transactions", []):
-        txs.append(
+    def to_dict(self, state: AppState) -> dict[str, Any]:
+        return {
+            "metadata": {"schema_version": state.metadata.schema_version},
+            "transactions": [
+                {
+                    "id": tx.id,
+                    "date": tx.date.isoformat(),
+                    "account": tx.account,
+                    "description": tx.description,
+                    "amount": tx.amount,
+                    "currency": tx.currency,
+                    "source_file": tx.source_file,
+                    "category": tx.category,
+                    "owner": tx.owner,
+                    "assignment_source": tx.assignment_source,
+                    "ignored": tx.ignored,
+                }
+                for tx in state.transactions
+            ],
+            "rules": [
+                {"id": rule.id, "pattern": rule.pattern, "category": rule.category, "owner": rule.owner, "priority": rule.priority}
+                for rule in state.rules
+            ],
+            "category_styles": [
+                {"category": style.category, "colour": style.colour} for style in state.category_styles
+            ],
+        }
+
+    def from_dict(self, data: dict[str, Any]) -> AppState:
+        metadata_data = data.get("metadata", {})
+        transactions = tuple(
             Transaction(
                 id=item["id"],
-                date=datetime.fromisoformat(item["date"]).date(),
+                date=date.fromisoformat(item["date"]),
                 account=item["account"],
                 description=item["description"],
                 amount=float(item["amount"]),
@@ -72,12 +59,12 @@ def load_state(path: Path) -> AppState:
                 source_file=item.get("source_file"),
                 category=item.get("category"),
                 owner=item.get("owner"),
+                assignment_source=item.get("assignment_source"),
                 ignored=bool(item.get("ignored", False)),
             )
+            for item in data.get("transactions", [])
         )
-    rules = []
-    for item in obj.get("rules", []):
-        rules.append(
+        rules = tuple(
             Rule(
                 id=item["id"],
                 pattern=item["pattern"],
@@ -85,8 +72,23 @@ def load_state(path: Path) -> AppState:
                 owner=item["owner"],
                 priority=int(item.get("priority", 0)),
             )
+            for item in data.get("rules", [])
         )
-    styles = {}
-    for cat, item in obj.get("category_styles", {}).items():
-        styles[cat] = CategoryStyle(category=item["category"], colour=item.get("colour"))
-    return AppState(transactions=tuple(txs), rules=tuple(rules), category_styles=styles)
+        style_items = data.get("category_styles", [])
+        if isinstance(style_items, dict):
+            style_items = style_items.values()
+        styles = tuple(CategoryStyle(category=item["category"], colour=item.get("colour")) for item in style_items)
+        return AppState(
+            transactions=transactions,
+            rules=rules,
+            category_styles=styles,
+            metadata=AppMetadata(schema_version=int(metadata_data.get("schema_version", 1))),
+        )
+
+
+def save_state(state: AppState, path: Path) -> None:
+    StateJsonRepository().save(state, path)
+
+
+def load_state(path: Path) -> AppState:
+    return StateJsonRepository().load(path)
