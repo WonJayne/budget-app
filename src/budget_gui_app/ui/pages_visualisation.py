@@ -2,54 +2,87 @@
 
 from __future__ import annotations
 
+import calendar
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from nicegui import ui
 
-from ..core.sankey import SankeyBuilder
+from ..core.periods import PeriodFilter, available_years, default_period_filter
+from ..core.sankey import DEFAULT_NODE_COLOUR, SankeyBuilder
 from ..core.state import AppState
-from ..core.summaries import cash_flow_totals, included_transactions, summarize_transactions
+from ..core.summaries import cash_flow_totals, included_transactions, summarize_transactions, yearly_overview
 from .pages_data import select_or_new, selected_value
+
+DEFAULT_PALETTE = [
+    "#4C78A8", "#F58518", "#54A24B", "#E45756",
+    "#72B7B2", "#B279A2", "#FF9DA6", "#9D755D",
+    "#BAB0AC", "#A0CBE8", "#FFBE7D", "#8CD17D",
+    "#D4A6C8", "#F1CE63", "#499894", "#86BCB6",
+]
 
 
 @dataclass
 class Filters:
-    month: str = "All"
+    period: PeriodFilter | None = None
     owner: str = "All"
     currency: str = "All"
     include_inflows: bool = True
     include_ignored: bool = False
+    selected_colour_category: str | None = None
+    selected_colour: str = DEFAULT_PALETTE[0]
 
 
 def build_visualisation_page(get_state: Callable[[], AppState], on_state_change: Callable[[AppState], None]) -> Callable[[], None]:
     filters = Filters()
     builder = SankeyBuilder()
 
-    def options(state: AppState) -> tuple[list[str], list[str], list[str]]:
+    def options(state: AppState) -> tuple[tuple[int, ...], list[str], list[str]]:
         catalog = state.option_catalog()
-        months = ["All"] + sorted({tx.date.strftime("%Y-%m") for tx in state.transactions})
+        years = available_years(state.transactions)
         owners = ["All"] + list(catalog.owners)
         currency_options = ["All"] + list(catalog.currencies)
         if filters.currency not in currency_options:
             filters.currency = "CHF" if "CHF" in currency_options else "All"
-        return months, owners, currency_options
+        if filters.owner not in owners:
+            filters.owner = "All"
+        return years, owners, currency_options
+
+    def period_controls(years: tuple[int, ...]) -> None:
+        assert filters.period is not None
+        with ui.row().classes("items-center"):
+            mode = ui.select(["all", "year", "month"], label="View", value=filters.period.mode).classes("w-32")
+            year = ui.select(list(years), label="Year", value=filters.period.year or years[-1]).classes("w-32")
+            month = ui.select(list(range(1, 13)), label="Month", value=filters.period.month or 1).classes("w-32")
+            year.visible = filters.period.mode in ("year", "month")
+            month.visible = filters.period.mode == "month"
+
+            def update() -> None:
+                filters.period = PeriodFilter(
+                    mode=mode.value,
+                    year=int(year.value) if mode.value in ("year", "month") else None,
+                    month=int(month.value) if mode.value == "month" else None,
+                )
+                content.refresh()
+
+            mode.on_value_change(lambda _: update())
+            year.on_value_change(lambda _: update())
+            month.on_value_change(lambda _: update())
 
     @ui.refreshable
     def content() -> None:
-        state: AppState = get_state()
-        months, owners, currencies = options(state)
-        if filters.month not in months:
-            filters.month = "All"
-        if filters.owner not in owners:
-            filters.owner = "All"
+        state = get_state()
+        if filters.period is None:
+            filters.period = default_period_filter(state.transactions)
+        years, owners, currencies = options(state)
+        if filters.period.year not in years and filters.period.mode != "all":
+            filters.period = default_period_filter(state.transactions)
 
-        month_value = None if filters.month == "All" else filters.month
         owner_value = None if filters.owner == "All" else filters.owner
         currency_value = None if filters.currency == "All" else filters.currency
         included = included_transactions(
             state.transactions,
-            month=month_value,
+            period=filters.period,
             owner=owner_value,
             currency=currency_value,
             include_inflows=filters.include_inflows,
@@ -58,12 +91,15 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
         totals = cash_flow_totals(included)
 
         with ui.column().classes("w-full gap-4"):
-            with ui.row().classes("items-center"):
-                ui.select(months, label="Month", value=filters.month, on_change=lambda event: (setattr(filters, "month", event.value), content.refresh())).classes("w-36")
-                ui.select(owners, label="Owner", value=filters.owner, on_change=lambda event: (setattr(filters, "owner", event.value), content.refresh())).classes("w-36")
-                ui.select(currencies, label="Currency", value=filters.currency, on_change=lambda event: (setattr(filters, "currency", event.value), content.refresh())).classes("w-36")
-                ui.switch("Include inflows", value=filters.include_inflows, on_change=lambda event: (setattr(filters, "include_inflows", event.value), content.refresh()))
-                ui.switch("Include ignored", value=filters.include_ignored, on_change=lambda event: (setattr(filters, "include_ignored", event.value), content.refresh()))
+            with ui.card().classes("w-full"):
+                ui.label("Period and filters").classes("text-lg font-bold")
+                period_controls(years)
+                with ui.row().classes("items-center"):
+                    ui.select(owners, label="Owner", value=filters.owner, on_change=lambda event: (setattr(filters, "owner", event.value), content.refresh())).classes("w-36")
+                    ui.select(currencies, label="Currency", value=filters.currency, on_change=lambda event: (setattr(filters, "currency", event.value), content.refresh())).classes("w-36")
+                    ui.switch("Include inflows", value=filters.include_inflows, on_change=lambda event: (setattr(filters, "include_inflows", event.value), content.refresh()))
+                    ui.switch("Include ignored", value=filters.include_ignored, on_change=lambda event: (setattr(filters, "include_ignored", event.value), content.refresh()))
+                ui.label(f"Showing: {filters.period.label} • Currency: {filters.currency} • Owners: {filters.owner}").classes("text-sm text-gray-600")
 
             with ui.row().classes("gap-4"):
                 for label, value in (
@@ -77,61 +113,86 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         ui.label(label).classes("text-sm text-gray-500")
                         ui.label(f"{value:.2f}").classes("text-xl font-bold")
 
-            figure = builder.build(
-                state.transactions,
-                state.category_style_map(),
-                month=month_value,
-                owner=owner_value,
-                currency=currency_value,
-                include_inflows=filters.include_inflows,
-                include_ignored=filters.include_ignored,
-            )
-            ui.plotly(figure).classes("w-full h-[520px]")
+            with ui.tabs().classes("w-full") as tabs:
+                sankey_tab = ui.tab("Sankey")
+                yearly_tab = ui.tab("Yearly overview")
+                category_tab = ui.tab("Category summary")
+            with ui.tab_panels(tabs, value=sankey_tab).classes("w-full"):
+                with ui.tab_panel(sankey_tab):
+                    ui.label(f"Showing: {filters.period.label} | Currency: {filters.currency} | Owners: {filters.owner}").classes("font-bold")
+                    figure = builder.build(
+                        state.transactions,
+                        state.category_style_map(),
+                        period=filters.period,
+                        owner=owner_value,
+                        currency=currency_value,
+                        include_inflows=filters.include_inflows,
+                        include_ignored=filters.include_ignored,
+                    )
+                    ui.plotly(figure).classes("w-full h-[560px]")
+                with ui.tab_panel(yearly_tab):
+                    selected_year = filters.period.year or years[-1]
+                    ui.label(f"Yearly overview for {selected_year}").classes("font-bold")
+                    rows = [
+                        {
+                            "month": calendar.month_abbr[row.month],
+                            "total_inflow": f"{row.total_inflow:.2f}",
+                            "total_outflow": f"{row.total_outflow:.2f}",
+                            "balance": f"{row.balance:.2f}",
+                            "potential_savings": f"{row.potential_savings:.2f}",
+                            "deficit": f"{row.deficit:.2f}",
+                        }
+                        for row in yearly_overview(state.transactions, selected_year, currency=currency_value, include_ignored=filters.include_ignored)
+                    ]
+                    ui.table(columns=[
+                        {"name": "month", "label": "Month", "field": "month"},
+                        {"name": "total_inflow", "label": "Total inflow", "field": "total_inflow", "align": "right"},
+                        {"name": "total_outflow", "label": "Total outflow", "field": "total_outflow", "align": "right"},
+                        {"name": "balance", "label": "Balance", "field": "balance", "align": "right"},
+                        {"name": "potential_savings", "label": "Potential savings", "field": "potential_savings", "align": "right"},
+                        {"name": "deficit", "label": "Deficit", "field": "deficit", "align": "right"},
+                    ], rows=rows).classes("w-full")
+                with ui.tab_panel(category_tab):
+                    selected_year = filters.period.year or years[-1]
+                    period = PeriodFilter("year", selected_year)
+                    yearly_included = included_transactions(state.transactions, period=period, owner=owner_value, currency=currency_value, include_inflows=True, include_ignored=filters.include_ignored)
+                    yearly_totals = cash_flow_totals(yearly_included)
+                    rows = []
+                    for row in summarize_transactions(state.transactions, period=period, owner=owner_value, currency=currency_value, include_inflows=True, include_ignored=filters.include_ignored):
+                        denominator = yearly_totals.total_inflow if row.flow_type == "inflow" else yearly_totals.total_outflow
+                        share = abs(row.total_amount) / denominator if denominator else 0.0
+                        rows.append({"flow_type": row.flow_type, "category": row.category, "owner": row.owner, "total_amount": f"{row.total_amount:.2f}", "share": f"{share:.1%}"})
+                    ui.table(columns=[
+                        {"name": "category", "label": "Category", "field": "category", "align": "left"},
+                        {"name": "flow_type", "label": "Flow type", "field": "flow_type"},
+                        {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
+                        {"name": "total_amount", "label": "Total amount", "field": "total_amount", "align": "right"},
+                        {"name": "share", "label": "Share of yearly flow", "field": "share", "align": "right"},
+                    ], rows=rows).classes("w-full")
 
-            ui.label("Category colours").classes("text-xl font-bold")
-            catalog = state.option_catalog()
-            categories = sorted(set(catalog.inflow_categories) | set(catalog.outflow_categories))
-            styles = state.category_style_map()
-            if not categories:
-                ui.label("No categories yet.").classes("text-gray-500")
-            for category in categories:
-                with ui.row().classes("items-center"):
-                    ui.label(category).classes("w-48")
-                    colour = ui.input("Hex colour", value=styles.get(category).colour if category in styles else "").classes("w-40")
-                    ui.button("Save", on_click=lambda _, cat=category, inp=colour: (on_state_change(get_state().set_category_colour(cat, inp.value or None)), ui.notify("Colour saved.")))
-            with ui.expansion("Add colour for new category", icon="palette"):
-                category_select, category_new = select_or_new("Category", categories, None)
-                colour = ui.input("Hex colour", value="#9ca3af").classes("w-40")
-                ui.button("Save colour", on_click=lambda: (on_state_change(get_state().set_category_colour(selected_value(category_select, category_new), colour.value or None)), ui.notify("Colour saved.")))
-
-            ui.label("Summary").classes("text-xl font-bold")
-            rows = [
-                {
-                    "flow_type": row.flow_type,
-                    "category": row.category,
-                    "owner": row.owner,
-                    "total_amount": f"{row.total_amount:.2f}",
-                    "share_of_outflows": f"{row.share_of_outflows:.1%}",
-                }
-                for row in summarize_transactions(
-                    state.transactions,
-                    month=month_value,
-                    owner=owner_value,
-                    currency=currency_value,
-                    include_inflows=filters.include_inflows,
-                    include_ignored=filters.include_ignored,
-                )
-            ]
-            ui.table(
-                columns=[
-                    {"name": "flow_type", "label": "Flow type", "field": "flow_type", "align": "left"},
-                    {"name": "category", "label": "Category", "field": "category", "align": "left"},
-                    {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
-                    {"name": "total_amount", "label": "Total amount", "field": "total_amount", "align": "right"},
-                    {"name": "share_of_outflows", "label": "Share of outflows", "field": "share_of_outflows", "align": "right"},
-                ],
-                rows=rows,
-            ).classes("w-full")
+            with ui.expansion("Category colour editor", icon="palette").classes("w-full"):
+                catalog = state.option_catalog()
+                categories = sorted(set(catalog.inflow_categories) | set(catalog.outflow_categories))
+                if not categories:
+                    ui.label("No categories yet.").classes("text-gray-500")
+                else:
+                    if filters.selected_colour_category not in categories:
+                        filters.selected_colour_category = categories[0]
+                    styles = state.category_style_map()
+                    current = styles.get(filters.selected_colour_category).colour if filters.selected_colour_category in styles else DEFAULT_NODE_COLOUR
+                    category_select, category_new = select_or_new("Category to edit", categories, filters.selected_colour_category)
+                    category_select.on_value_change(lambda event: (setattr(filters, "selected_colour_category", selected_value(category_select, category_new)), content.refresh()))
+                    with ui.row().classes("items-center"):
+                        ui.label("Current colour:")
+                        ui.label(" ").style(f"background:{current}; width:32px; height:20px; border-radius:6px;")
+                    with ui.row().classes("gap-2"):
+                        for colour in DEFAULT_PALETTE:
+                            ui.button("", on_click=lambda _, c=colour: (setattr(filters, "selected_colour", c), on_state_change(get_state().set_category_colour(selected_value(category_select, category_new), c)), ui.notify("Colour saved."))).style(f"background:{colour}; width:28px; height:28px; min-width:28px;")
+                    with ui.expansion("Advanced custom hex"):
+                        colour_input = ui.input("Custom hex colour", value=filters.selected_colour).classes("w-40")
+                        with ui.row():
+                            ui.button("Save colour", on_click=lambda: (on_state_change(get_state().set_category_colour(selected_value(category_select, category_new), colour_input.value or None)), ui.notify("Colour saved.")))
+                            ui.button("Reset colour", on_click=lambda: (on_state_change(get_state().set_category_colour(selected_value(category_select, category_new), None)), ui.notify("Colour reset.")))
 
     content()
     return content.refresh

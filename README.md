@@ -41,10 +41,10 @@ Default household owners are `Flo`, `Nina`, and `Shared`. The UI derives selecto
 The **Data / Rules / Review** tab supports:
 
 - CSV import;
-- JSON state import/export;
+- JSON state import/export plus merged CSV export;
 - clearing the current local state with confirmation;
-- adding manual inflow and outflow entries;
-- deleting manual entries;
+- adding manual inflow and outflow entries in the selected All/Year/Month period;
+- editing and deleting manual entries;
 - adding, editing, and deleting inflow/outflow rules;
 - reviewing unclassified imported transactions;
 - manually assigning category/owner for a single transaction;
@@ -57,7 +57,7 @@ Manual entries are stored as local transactions with `source_kind="manual"`, no 
 
 ## Visualisation
 
-The **Visualisation** tab includes filters for month, owner, currency, inflows, and ignored transactions. It renders an embedded Plotly Sankey using this household-pool structure:
+The **Visualisation** tab includes an explicit period selector for **All**, **Year**, and **Month** views, plus owner, currency, inflow, and ignored-transaction filters. Monthly view is the default so day-to-day household decisions focus on one budget month; yearly view is used for overview/reporting. It renders an embedded Plotly Sankey using this household-pool structure:
 
 ```text
 inflow category -> owner inflow -> Household pool -> owner outflow -> outflow category
@@ -65,13 +65,21 @@ inflow category -> owner inflow -> Household pool -> owner outflow -> outflow ca
 
 When inflows exceed outflows, the Sankey shows `Household pool -> Potential savings`. When outflows exceed inflows, it shows `Deficit -> Household pool`.
 
-The page also shows summary cards for total inflow, total outflow, balance, potential savings, and deficit, plus a category/owner summary table that distinguishes inflows from outflows.
+The page also shows summary cards for total inflow, total outflow, balance, potential savings, and deficit. Tabs provide the Sankey, a yearly overview table aggregated by month, and a category/owner summary table that distinguishes inflows from outflows.
+
+## Category colours
+
+Category colours are edited with a compact dropdown and palette chips. A custom hex input is available under an advanced section, but normal use should only require clicking a colour. Colours are saved in JSON state export and reapplied to the Sankey with safe fallback colours when a category has no saved colour.
+
+## How-to and demo
+
+The **How it works** tab explains CSV import, manual entries, inflow/outflow rules, monthly and yearly filtering, the Household pool, Potential savings/Deficit, and state import/export. The **Load demo data** button replaces the current data after confirmation and loads two months of Flo/Nina/Shared example transactions with one savings month and one deficit month.
 
 ## State import/export
 
-State export/import uses one local JSON file containing schema metadata, transactions, rules, and category colours. Exporting state materialises the current app state, including manual entries, rule types, assignment provenance, ignored flags, and category colour settings.
+State export/import uses one local JSON file containing schema metadata, transactions, rules, manual entries, ignored flags, assignment provenance, and category colours. Exporting state materialises the current app state, including manual entries, rule types, assignment provenance, ignored flags, and category colour settings.
 
-Older state files with missing fields are loaded with safe defaults where practical; for example, old rules without `rule_type` default to `outflow`, and old transactions without `source_kind` default to `imported`.
+Older state files with missing fields are loaded with safe defaults where practical; for example, old rules without `rule_type` default to `outflow`, and old transactions without `source_kind` infer manual entries when `source_file` is missing or `manual`.
 
 ## Examples
 

@@ -12,6 +12,8 @@ from .rules import RuleEngine
 DEFAULT_OWNERS = ("Flo", "Nina", "Shared")
 DEFAULT_CURRENCY = "CHF"
 DEFAULT_ACCOUNT = "manual"
+DEFAULT_INFLOW_CATEGORIES = ("Bonus", "Gift", "Refund", "Reimbursement", "Salary")
+DEFAULT_OUTFLOW_CATEGORIES = ("Childcare", "Eating out", "Groceries", "Holidays", "Insurance", "Investments", "Rent", "Subscriptions", "Transport")
 
 
 @dataclass(frozen=True)
@@ -39,8 +41,8 @@ class AppState:
 
     def option_catalog(self) -> OptionCatalog:
         owners = set(DEFAULT_OWNERS)
-        inflow_categories: set[str] = set()
-        outflow_categories: set[str] = set()
+        inflow_categories: set[str] = set(DEFAULT_INFLOW_CATEGORIES)
+        outflow_categories: set[str] = set(DEFAULT_OUTFLOW_CATEGORIES)
         currencies = {DEFAULT_CURRENCY}
         accounts = {DEFAULT_ACCOUNT}
 
@@ -110,6 +112,39 @@ class AppState:
             source_kind="manual",
         )
         return self.add_transactions((transaction,))
+
+    def update_manual_transaction(
+        self,
+        transaction_id: str,
+        *,
+        flow_type: FlowType,
+        tx_date: date,
+        description: str,
+        amount: float,
+        currency: str,
+        account: str,
+        category: str,
+        owner: str,
+    ) -> "AppState":
+        signed_amount = abs(amount) if flow_type == "inflow" else -abs(amount)
+        updated = tuple(
+            replace(
+                transaction,
+                date=tx_date,
+                description=description,
+                amount=signed_amount,
+                currency=currency,
+                account=account,
+                category=category,
+                owner=owner,
+                assignment_source="manual",
+                source_kind="manual",
+            )
+            if transaction.id == transaction_id and transaction.source_kind == "manual"
+            else transaction
+            for transaction in self.transactions
+        )
+        return replace(self, transactions=updated).reapply_rules()
 
     def remove_manual_transaction(self, transaction_id: str) -> "AppState":
         return replace(

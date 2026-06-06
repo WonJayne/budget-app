@@ -386,3 +386,43 @@ When finishing a task, report:
 - tests run and result;
 - manual verification performed;
 - known limitations.
+
+## UX and Period Model Rules
+
+The app should feel like a household budget tool, not a raw database editor.
+
+Use explicit period logic everywhere:
+
+- All view;
+- Year view;
+- Month view.
+
+Do not represent period selection as only a nullable month string.
+
+Manual cash-flow entries must be editable and period-aware. They should be shown according to the current period filter.
+
+Use select-or-create controls for user-facing fields such as owner, category, currency, and rule type. Plain text fields are acceptable for transaction descriptions and rule patterns.
+
+Default owners are:
+
+- Flo
+- Nina
+- Shared
+
+Use the terms:
+
+- inflow for positive cash movements;
+- outflow for negative cash movements;
+- Household pool as the central Sankey node;
+- Potential savings for positive balance;
+- Deficit for negative balance.
+
+The colour editor must be human-friendly. Prefer a category dropdown plus palette chips. Raw hex editing may exist as an advanced option, but it must not be the primary workflow.
+
+The visualisation page should always explain what period is shown. Monthly and yearly views must be clearly distinguishable.
+
+The app should include a small How-to/Demo page explaining import, rules, manual entries, periods, balance, and state export/import.
+
+Keep the app local-only. Do not introduce external services, bank APIs, cloud sync, user accounts, or CDN dependencies.
+
+One extra product point: make Monthly the main/default view and Yearly the overview/reporting view. Most household finance decisions happen monthly; the yearly view is mainly for sanity checks like “are we actually saving over the year?”
