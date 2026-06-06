@@ -22,7 +22,7 @@ def test_state_json_export_import_roundtrips_correctly(tmp_path: Path) -> None:
     )
     state = AppState(
         transactions=(transaction,),
-        rules=(Rule("r1", "migros", "Groceries", "shared", 1),),
+        rules=(Rule("r1", "migros", "Groceries", "shared", "outflow", 1),),
         category_styles=(CategoryStyle("Groceries", "#00ff00"),),
     )
     path = tmp_path / "state.json"

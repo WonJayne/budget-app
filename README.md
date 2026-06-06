@@ -1,59 +1,79 @@
 # Budget GUI App
 
-A local-only household budget prototype for importing normalized CSV transaction exports, classifying them with rules, reviewing unclassified entries, persisting state as JSON, and visualising the current budget with an embedded Plotly Sankey dashboard in NiceGUI.
+A local-only household cash-flow dashboard built with Python, NiceGUI, pandas, and Plotly. It imports normalized CSV transaction exports, classifies inflows and outflows with editable rules, supports manual corrections, persists state as JSON, and visualises household cash flow with an embedded Sankey diagram.
 
-The application runs on `127.0.0.1` and does not implement cloud sync, user accounts, bank APIs, or external-server workflows.
+The app runs on `127.0.0.1` and intentionally has no cloud sync, user accounts, bank APIs, remote database, or external analytics.
 
-## Install and run
+## Install, run, and test
 
 ```bash
 uv sync
 uv run budget-app
+uv run pytest
 ```
 
 Open the local NiceGUI page shown in the terminal, normally <http://127.0.0.1:8080>.
 
 ## CSV format
 
-The initial importer supports normalized CSV files with these required columns:
+The importer supports normalized CSV files with these required columns:
 
 ```csv
 date,account,description,amount,currency
-2026-05-02,shared_zkb,Migros Wipkingen,-84.30,CHF
+2026-05-01,shared_zkb,Salary Flo,5000.00,CHF
+2026-05-03,shared_zkb,Migros Wipkingen,-84.30,CHF
 ```
 
-Additional columns are ignored. Transaction IDs are deterministic and duplicate imports are skipped by ID.
+Additional columns are ignored. Transaction IDs are deterministic from the raw transaction fields, so duplicate imports are skipped.
 
-## Features implemented
+## Cash-flow model
 
-- Additive CSV import with duplicate skipping.
-- Rule-based classification using case-insensitive description substring matching.
-- Rule priority with stable insertion-order tie breaking.
-- Manual transaction assignment that survives rule changes.
-- Rule reapplication that removes stale rule-derived classifications after rule edits/deletes.
-- Review queue for unclassified transactions, with assign, create-rule, and ignore actions.
-- JSON state import/export for transactions, rules, category colours, and schema metadata.
-- Embedded dynamic Sankey visualisation with month, owner, currency, income, and ignored filters.
-- Category colour editing persisted in exported state.
+Transaction sign determines the flow type:
 
-## Tests
+- `amount > 0` is an **inflow** such as salary, gifts, reimbursements, refunds, or corrections.
+- `amount < 0` is an **outflow** such as groceries, rent, subscriptions, personal spending, savings transfers, or corrections.
+- `amount == 0` is ignored by rules and the Sankey.
 
-```bash
-uv run pytest
+Default household owners are `Flo`, `Nina`, and `Shared`. The UI derives selector options from the current state while still allowing new categories, owners, accounts, and currencies where needed.
+
+## Data, rules, and review workflow
+
+The **Data / Rules / Review** tab supports:
+
+- CSV import;
+- JSON state import/export;
+- clearing the current local state with confirmation;
+- adding manual inflow and outflow entries;
+- deleting manual entries;
+- adding, editing, and deleting inflow/outflow rules;
+- reviewing unclassified imported transactions;
+- manually assigning category/owner for a single transaction;
+- creating a reusable rule from a reviewed transaction;
+- ignoring transactions that should not be classified.
+
+Rules are case-insensitive description substring matches. Each rule has a visible `inflow` or `outflow` type, so inflow rules apply only to positive transactions and outflow rules apply only to negative transactions. Rule priority is respected, and manual assignments survive rule reapplication. Editing or deleting rules removes stale rule-based classifications.
+
+Manual entries are stored as local transactions with `source_kind="manual"`, no source file, and manual assignment provenance. Inflow entries are stored as positive amounts; outflow entries are stored as negative amounts.
+
+## Visualisation
+
+The **Visualisation** tab includes filters for month, owner, currency, inflows, and ignored transactions. It renders an embedded Plotly Sankey using this household-pool structure:
+
+```text
+inflow category -> owner inflow -> Household pool -> owner outflow -> outflow category
 ```
+
+When inflows exceed outflows, the Sankey shows `Household pool -> Potential savings`. When outflows exceed inflows, it shows `Deficit -> Household pool`.
+
+The page also shows summary cards for total inflow, total outflow, balance, potential savings, and deficit, plus a category/owner summary table that distinguishes inflows from outflows.
+
+## State import/export
+
+State export/import uses one local JSON file containing schema metadata, transactions, rules, and category colours. Exporting state materialises the current app state, including manual entries, rule types, assignment provenance, ignored flags, and category colour settings.
+
+Older state files with missing fields are loaded with safe defaults where practical; for example, old rules without `rule_type` default to `outflow`, and old transactions without `source_kind` default to `imported`.
 
 ## Examples
 
-- `examples/sample_transactions.csv` contains a richer normalized CSV import sample with multiple months, accounts, incomes, shared costs, and personal expenses.
-- `examples/sample_state.json` contains a richer state export sample with rules, category colours, classified transactions, and one unclassified transaction for the review queue.
-
-## Preliminary PyInstaller packaging note
-
-NiceGUI applications can require hidden imports and static assets depending on the target platform. A first exploratory command is:
-
-```bash
-uv add --dev pyinstaller
-uv run pyinstaller --name budget-app --onefile src/budget_gui_app/app.py
-```
-
-If the generated executable does not include all NiceGUI assets, use PyInstaller's collected-data options for `nicegui` and `plotly`, or switch to a one-folder build while validating packaging.
+- `examples/sample_transactions.csv` contains a normalized CSV sample with Flo, Nina, and Shared inflows/outflows.
+- `examples/sample_state.json` contains a state export sample with inflow/outflow rules, category colours, classified transactions, and one unclassified transaction for review.

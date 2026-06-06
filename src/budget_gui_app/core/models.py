@@ -8,6 +8,17 @@ from datetime import date
 from typing import Literal
 
 AssignmentSource = Literal["manual", "rule"] | None
+FlowType = Literal["inflow", "outflow"]
+SourceKind = Literal["imported", "manual"]
+
+
+def flow_type_for_amount(amount: float) -> FlowType | None:
+    """Return the cash-flow type implied by a transaction amount."""
+    if amount > 0:
+        return "inflow"
+    if amount < 0:
+        return "outflow"
+    return None
 
 
 def _generate_id(*parts: str) -> str:
@@ -28,11 +39,21 @@ class Transaction:
     owner: str | None = None
     assignment_source: AssignmentSource = None
     ignored: bool = False
+    source_kind: SourceKind = "imported"
 
     @staticmethod
     def make_id(date: date, account: str, description: str, amount: float, currency: str) -> str:
         """Derive a deterministic ID from raw transaction fields."""
         return _generate_id(date.isoformat(), account, description, f"{amount:.2f}", currency)
+
+    @staticmethod
+    def make_manual_id(date: date, account: str, description: str, amount: float, currency: str, salt: str = "") -> str:
+        """Derive a deterministic-looking ID for a user-created manual transaction."""
+        return _generate_id("manual", date.isoformat(), account, description, f"{amount:.2f}", currency, salt)
+
+    @property
+    def flow_type(self) -> FlowType | None:
+        return flow_type_for_amount(self.amount)
 
 
 @dataclass(frozen=True)
@@ -41,14 +62,15 @@ class Rule:
     pattern: str
     category: str
     owner: str
+    rule_type: FlowType = "outflow"
     priority: int = 0
 
     def matches(self, description: str) -> bool:
         return self.pattern.lower() in description.lower()
 
     @staticmethod
-    def make_id(pattern: str, category: str, owner: str, priority: int = 0, salt: str = "") -> str:
-        return _generate_id(pattern.lower(), category, owner, str(priority), salt)
+    def make_id(pattern: str, category: str, owner: str, rule_type: FlowType = "outflow", priority: int = 0, salt: str = "") -> str:
+        return _generate_id(pattern.lower(), category, owner, rule_type, str(priority), salt)
 
 
 @dataclass(frozen=True)

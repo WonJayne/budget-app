@@ -7,10 +7,14 @@ from typing import Iterable, Mapping
 
 import plotly.graph_objects as go
 
-from .models import CategoryStyle, Transaction
+from .models import CategoryStyle, Transaction, flow_type_for_amount
+from .summaries import cash_flow_totals
 
 DEFAULT_NODE_COLOUR = "#9ca3af"
 DEFAULT_LINK_COLOUR = "rgba(156, 163, 175, 0.35)"
+POOL_NODE = "Household pool"
+POTENTIAL_SAVINGS_NODE = "Potential savings"
+DEFICIT_NODE = "Deficit"
 
 
 class SankeyBuilder:
@@ -22,13 +26,16 @@ class SankeyBuilder:
         month: str | None,
         owner: str | None,
         currency: str | None,
-        include_income: bool,
+        include_inflows: bool | None = None,
         include_ignored: bool,
+        include_income: bool | None = None,
     ) -> go.Figure:
+        if include_inflows is None:
+            include_inflows = True if include_income is None else include_income
         filtered = [
             transaction
             for transaction in transactions
-            if self._included(transaction, month, owner, currency, include_income, include_ignored)
+            if self._included(transaction, month, owner, currency, include_inflows, include_ignored)
         ]
 
         node_index: dict[str, int] = {}
@@ -42,22 +49,46 @@ class SankeyBuilder:
                 colours.append(styles.get(label, CategoryStyle(label)).colour or DEFAULT_NODE_COLOUR)
             return node_index[label]
 
+        def category_colour(label: str) -> str:
+            return styles.get(label, CategoryStyle(label)).colour or DEFAULT_NODE_COLOUR
+
         flows: defaultdict[tuple[int, int], float] = defaultdict(float)
+        link_colours_by_pair: dict[tuple[int, int], str] = {}
+
+        def add_flow(source_label: str, target_label: str, value: float, colour: str = DEFAULT_LINK_COLOUR) -> None:
+            if value <= 0:
+                return
+            source = node(source_label)
+            target = node(target_label)
+            flows[(source, target)] += value
+            link_colours_by_pair[(source, target)] = colour or DEFAULT_LINK_COLOUR
+
         for transaction in filtered:
-            if transaction.amount > 0:
-                source = "Income"
-                target = transaction.owner or "Unassigned"
-                value = transaction.amount
-            else:
-                source = transaction.owner or "Unassigned"
-                target = transaction.category or "Uncategorised"
+            flow_type = flow_type_for_amount(transaction.amount)
+            if flow_type == "inflow":
+                category = transaction.category or "Uncategorised inflow"
+                owner_name = transaction.owner or "Unassigned inflow"
+                owner_node = f"{owner_name} inflow" if owner_name != "Unassigned inflow" else owner_name
+                add_flow(category, owner_node, transaction.amount, category_colour(category))
+                add_flow(owner_node, POOL_NODE, transaction.amount)
+            elif flow_type == "outflow":
+                category = transaction.category or "Uncategorised outflow"
+                owner_name = transaction.owner or "Unassigned outflow"
+                owner_node = f"{owner_name} outflow" if owner_name != "Unassigned outflow" else owner_name
                 value = abs(transaction.amount)
-            flows[(node(source), node(target))] += value
+                add_flow(POOL_NODE, owner_node, value)
+                add_flow(owner_node, category, value, category_colour(category))
+
+        totals = cash_flow_totals(filtered)
+        if totals.balance > 0:
+            add_flow(POOL_NODE, POTENTIAL_SAVINGS_NODE, totals.balance)
+        elif totals.balance < 0:
+            add_flow(DEFICIT_NODE, POOL_NODE, abs(totals.balance))
 
         sources = [source for source, _ in flows]
         targets = [target for _, target in flows]
         values = [value for value in flows.values()]
-        link_colours = [colours[target] if colours[target] != DEFAULT_NODE_COLOUR else DEFAULT_LINK_COLOUR for target in targets]
+        link_colours = [link_colours_by_pair.get(pair, DEFAULT_LINK_COLOUR) for pair in flows]
 
         fig = go.Figure(
             go.Sankey(
@@ -66,7 +97,7 @@ class SankeyBuilder:
                 link={"source": sources, "target": targets, "value": values, "color": link_colours},
             )
         )
-        fig.update_layout(title_text="Household Budget Sankey", font={"size": 12}, margin={"l": 8, "r": 8, "t": 36, "b": 8})
+        fig.update_layout(title_text="Household Cash-Flow Sankey", font={"size": 12}, margin={"l": 8, "r": 8, "t": 36, "b": 8})
         return fig
 
     @staticmethod
@@ -75,9 +106,12 @@ class SankeyBuilder:
         month: str | None,
         owner: str | None,
         currency: str | None,
-        include_income: bool,
+        include_inflows: bool,
         include_ignored: bool,
     ) -> bool:
+        flow_type = flow_type_for_amount(transaction.amount)
+        if flow_type is None:
+            return False
         if not include_ignored and transaction.ignored:
             return False
         if month and transaction.date.strftime("%Y-%m") != month:
@@ -86,6 +120,6 @@ class SankeyBuilder:
             return False
         if currency and transaction.currency != currency:
             return False
-        if not include_income and transaction.amount > 0:
+        if not include_inflows and flow_type == "inflow":
             return False
         return True
