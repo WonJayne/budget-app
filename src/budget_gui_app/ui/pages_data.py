@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import tempfile
 from dataclasses import dataclass
@@ -22,6 +23,32 @@ class UiState:
     refresh: Callable[[], None]
 
 
+def upload_event_name(event: events.UploadEventArguments) -> str:
+    file = getattr(event, "file", None)
+    return getattr(file, "name", getattr(event, "name", "upload"))
+
+
+async def upload_event_bytes(event: events.UploadEventArguments) -> bytes:
+    file = getattr(event, "file", None)
+    if file is not None:
+        content = file.read()
+        return await content if inspect.isawaitable(content) else content
+
+    content = event.content.read()
+    return await content if inspect.isawaitable(content) else content
+
+
+async def upload_event_text(event: events.UploadEventArguments, encoding: str = "utf-8") -> str:
+    file = getattr(event, "file", None)
+    if file is not None:
+        if hasattr(file, "text"):
+            content = file.text(encoding)
+            return await content if inspect.isawaitable(content) else content
+        return (await upload_event_bytes(event)).decode(encoding)
+
+    return (await upload_event_bytes(event)).decode(encoding)
+
+
 def suggested_pattern(description: str) -> str:
     words = [word.strip(" ,.;:-_/()[]").lower() for word in description.split()]
     return next((word for word in words if word), description.lower())
@@ -36,9 +63,9 @@ def build_data_page(holder: UiState) -> None:
         holder.refresh()
 
     async def import_csv(event: events.UploadEventArguments) -> None:
-        suffix = Path(event.name).suffix or ".csv"
+        suffix = Path(upload_event_name(event)).suffix or ".csv"
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-            content = event.content.read()
+            content = await upload_event_bytes(event)
             temp_file.write(content)
             temp_path = Path(temp_file.name)
         try:
@@ -52,7 +79,7 @@ def build_data_page(holder: UiState) -> None:
             temp_path.unlink(missing_ok=True)
 
     async def import_state(event: events.UploadEventArguments) -> None:
-        data = event.content.read().decode("utf-8")
+        data = await upload_event_text(event)
         set_state(repository.from_dict(json.loads(data)))
         ui.notify("State imported.")
 
