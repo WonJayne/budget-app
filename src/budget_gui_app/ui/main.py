@@ -9,7 +9,7 @@ from .pages_data import UiState, build_data_page
 from .pages_visualisation import build_visualisation_page
 
 
-def build_ui() -> None:
+def create_ui() -> None:
     holder = UiState(state=AppState.empty(), refresh=lambda: None)
     refreshers: list = []
 
@@ -37,7 +37,11 @@ def build_ui() -> None:
             refreshers.append(viz_refresh)
 
     holder.refresh = refresh_all
-    ui.run(host="127.0.0.1", port=8080, reload=False)
 
 
-run_app = build_ui
+def main() -> None:
+    ui.run(root=create_ui, host="127.0.0.1", port=8080, reload=False)
+
+
+run_app = main
+build_ui = create_ui
