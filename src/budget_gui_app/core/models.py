@@ -83,5 +83,14 @@ class CategoryStyle:
 
 
 @dataclass(frozen=True)
+class AppProfile:
+    owners: tuple[str, ...] = ()
+    inflow_categories: tuple[str, ...] = ()
+    outflow_categories: tuple[str, ...] = ()
+    currencies: tuple[str, ...] = ()
+    accounts: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class AppMetadata:
     schema_version: int = 1

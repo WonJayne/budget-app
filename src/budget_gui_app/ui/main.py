@@ -51,12 +51,12 @@ def build_help_page(holder: UiState, set_state) -> None:
     with ui.column().classes("w-full gap-4"):
         ui.label("How it works").classes("text-2xl font-bold")
         ui.markdown("""
-- Import CSV files or add manual inflow/outflow entries. Export state to JSON to stop and restart later, or export a merged CSV for spreadsheet use.
+- Import transactions CSV files or add manual inflow/outflow entries. Export a ledger CSV for spreadsheet use, a full backup JSON to stop and restart later, or a rules/profile JSON to reuse classifications and colours without changing transactions.
 - Positive amounts are **inflows**; negative amounts are **outflows**. Manual outflows can be typed as positive numbers and are stored negative.
 - Inflow rules classify positive transactions only; outflow rules classify negative transactions only. Manual assignments survive rule changes.
 - Cash flows into the **Household pool**. Extra money becomes **Potential savings**; overspending appears as **Deficit**.
 - Monthly view focuses on one household budget month. Yearly view aggregates all months in the selected year.
-- State export/import saves and restores transactions, rules, manual entries, ignored flags, and category colours.
+- Full backup import/export saves and restores transactions, rules, manual entries, ignored flags, metadata, and category colours. Rules/profile import/export contains rules and colours but no transaction data.
 """)
         ui.button("Load demo data", color="primary", on_click=load_demo)
 

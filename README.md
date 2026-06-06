@@ -40,9 +40,12 @@ Default household owners are `Flo`, `Nina`, and `Shared`. The UI derives selecto
 
 The **Data / Rules / Review** tab supports:
 
-- CSV import;
-- JSON state import/export plus merged CSV export;
-- clearing the current local state with confirmation;
+- **Import transactions CSV** to append/update the transaction ledger only;
+- **Export ledger CSV** for the transaction ledger only;
+- **Import full backup** / **Export full backup** for complete JSON state;
+- **Import rules/profile** / **Export rules/profile** for rules, category colours, default options, and metadata without transaction data;
+- **Clear transactions** to remove ledger/manual entries while keeping rules/profile;
+- **Clear all data** to remove transactions, rules, colours, and reset metadata;
 - an **All entries** ledger for CSV-imported and manual entries;
 - ledger filtering by All/Year/Month period, source, flow type, owner, category, and status;
 - editing imported CSV entries without changing their stable transaction IDs;
@@ -80,17 +83,26 @@ The page also shows summary cards for total inflow, total outflow, balance, pote
 
 ## Category colours
 
-Category colours are edited with a compact dropdown, a large current-colour preview, and visible palette chips that show their actual colours. Pick a category, click a palette chip, then save the colour. A native colour picker and custom hex input are available under an advanced section, but normal use does not require typing hex codes. **Reset to automatic** removes the stored custom colour so the Sankey uses safe fallback colours. Saved category colours are included in JSON state export/import and reapplied to Sankey category nodes where possible.
+Category colours are edited with a compact dropdown, a large current-colour preview, and visible palette chips that show their actual colours. Pick a category, click a palette chip, then save the colour. A native colour picker and custom hex input are available under an advanced section, but normal use does not require typing hex codes. **Reset to automatic** removes the stored custom colour so the Sankey uses safe fallback colours. Saved category colours are included in full-backup and rules/profile JSON export/import and reapplied to Sankey category nodes where possible.
 
 ## How-to and demo
 
-The **How it works** tab explains CSV import, manual entries, inflow/outflow rules, monthly and yearly filtering, the Household pool, Potential savings/Deficit, and state import/export. The **Load demo data** button replaces the current data after confirmation and loads two months of Flo/Nina/Shared example transactions with one savings month and one deficit month.
+The **How it works** tab explains CSV import, manual entries, inflow/outflow rules, monthly and yearly filtering, the Household pool, Potential savings/Deficit, and full-backup and rules/profile import/export. The **Load demo data** button replaces the current data after confirmation and loads two months of Flo/Nina/Shared example transactions with one savings month and one deficit month.
 
-## State import/export
+## Import/export and backups
 
-State export/import uses one local JSON file containing schema metadata, transactions, rules, manual entries, ignored flags, assignment provenance, and category colours. Exporting state materialises the current app state, including manual entries, rule types, assignment provenance, ignored flags, and category colour settings.
+The app separates transaction data, reusable profile settings, and full backups:
 
-Older state files with missing fields are loaded with safe defaults where practical; for example, old rules without `rule_type` default to `outflow`, and old transactions without `source_kind` infer manual entries when `source_file` is missing or `manual`.
+- **Import transactions CSV** appends new CSV transactions to the current ledger and skips duplicate transaction IDs. It keeps existing rules, colours, metadata, manual edits, and ignored flags.
+- **Export ledger CSV** exports the transaction ledger only for spreadsheet use.
+- **Export full backup** writes a local JSON file containing complete app state: schema metadata, profile options, transactions, manual entries, edited ledger fields, ignored flags, assignment provenance, rules, and category colours.
+- **Import full backup** replaces the complete current app state with the JSON backup.
+- **Export rules/profile** writes JSON containing schema metadata, derived/default selector options, rules, and category colours, with no transaction ledger data.
+- **Import rules/profile** updates rules, colours, profile options, and metadata while keeping the existing transaction ledger. Rules are reapplied so rule-based classifications match the imported profile.
+- **Clear transactions** removes imported and manual ledger entries while keeping rules, colours, profile options, and metadata.
+- **Clear all data** resets the local app to an empty state, removing transactions, rules, colours, profile options, and metadata customisations.
+
+Older full-backup files with missing fields are loaded with safe defaults where practical; for example, old rules without `rule_type` default to `outflow`, and old transactions without `source_kind` infer manual entries when `source_file` is missing or `manual`.
 
 ## Examples
 

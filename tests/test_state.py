@@ -1,6 +1,6 @@
 from datetime import date
 
-from budget_gui_app.core.models import Rule, Transaction
+from budget_gui_app.core.models import CategoryStyle, Rule, Transaction
 from budget_gui_app.core.state import AppState
 
 
@@ -38,10 +38,25 @@ def test_manual_assignment_persists_after_rule_reapplication() -> None:
     assert state.transactions[0].assignment_source == "manual"
 
 
-def test_clear_resets_data_but_keeps_metadata_valid() -> None:
-    state = AppState.empty().add_transactions((make_tx(),)).add_rule(Rule("r1", "migros", "Groceries", "shared"))
+def test_clearing_transactions_keeps_rules_profile_and_metadata() -> None:
+    state = AppState(
+        category_styles=(CategoryStyle("Groceries", "#00ff00"),),
+    ).add_transactions((make_tx(),)).add_rule(Rule("r1", "migros", "Groceries", "shared"))
 
-    cleared = state.clear()
+    cleared = state.clear_transactions()
+
+    assert cleared.transactions == ()
+    assert cleared.rules == state.rules
+    assert cleared.category_styles == state.category_styles
+    assert cleared.metadata == state.metadata
+
+
+def test_clearing_all_data_removes_transactions_rules_profile_and_resets_metadata() -> None:
+    state = AppState(
+        category_styles=(CategoryStyle("Groceries", "#00ff00"),),
+    ).add_transactions((make_tx(),)).add_rule(Rule("r1", "migros", "Groceries", "shared"))
+
+    cleared = state.clear_all_data()
 
     assert cleared.transactions == ()
     assert cleared.rules == ()

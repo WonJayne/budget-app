@@ -111,28 +111,45 @@ def build_data_page(holder: UiState) -> None:
             new_count = sum(1 for transaction in transactions if transaction.id not in existing_ids)
             skipped_count = len(transactions) - new_count
             set_state(holder.state.add_transactions(transactions))
-            ui.notify(f"Imported {new_count} new transactions, skipped {skipped_count} duplicates.")
+            ui.notify(f"Imported {new_count} new transactions, skipped {skipped_count} duplicates. Rules/profile were kept.")
         finally:
             temp_path.unlink(missing_ok=True)
 
-    async def import_state(event: events.UploadEventArguments) -> None:
+    async def import_full_backup(event: events.UploadEventArguments) -> None:
         data = await upload_event_text(event)
         set_state(repository.from_dict(json.loads(data)))
-        ui.notify("State imported.")
+        ui.notify("Full backup imported; complete app state was replaced.")
 
-    def export_state() -> None:
+    async def import_profile(event: events.UploadEventArguments) -> None:
+        data = await upload_event_text(event)
+        set_state(repository.apply_profile_dict(holder.state, json.loads(data)))
+        ui.notify("Rules/profile imported; existing transactions were kept.")
+
+    def export_full_backup() -> None:
         data = json.dumps(repository.to_dict(holder.state), indent=2).encode("utf-8")
-        ui.download(data, filename="budget_state.json")
+        ui.download(data, filename="budget_full_backup.json")
+
+    def export_profile() -> None:
+        data = json.dumps(repository.to_profile_dict(holder.state), indent=2).encode("utf-8")
+        ui.download(data, filename="budget_rules_profile.json")
 
     def export_csv() -> None:
-        ui.download(transactions_to_csv(holder.state.transactions).encode("utf-8"), filename="budget_transactions_merged.csv")
+        ui.download(transactions_to_csv(holder.state.transactions).encode("utf-8"), filename="budget_ledger.csv")
 
-    def clear_state() -> None:
+    def clear_transactions() -> None:
         with ui.dialog() as dialog, ui.card():
-            ui.label("Clear all transactions, rules, and category colours?")
+            ui.label("Clear the transaction ledger and manual entries? Rules and colours will be kept.")
             with ui.row():
                 ui.button("Cancel", on_click=dialog.close)
-                ui.button("Clear", color="negative", on_click=lambda: (set_state(holder.state.clear()), dialog.close(), ui.notify("State cleared.")))
+                ui.button("Clear transactions", color="warning", on_click=lambda: (set_state(holder.state.clear_transactions()), dialog.close(), ui.notify("Transactions cleared; rules/profile kept.")))
+        dialog.open()
+
+    def clear_all_data() -> None:
+        with ui.dialog() as dialog, ui.card():
+            ui.label("Clear transactions, rules, category colours, and metadata?")
+            with ui.row():
+                ui.button("Cancel", on_click=dialog.close)
+                ui.button("Clear all data", color="negative", on_click=lambda: (set_state(holder.state.clear_all_data()), dialog.close(), ui.notify("All data cleared.")))
         dialog.open()
 
     def category_options(rule_type: FlowType) -> tuple[str, ...]:
@@ -305,11 +322,14 @@ def build_data_page(holder: UiState) -> None:
     def content() -> None:
         with ui.column().classes("w-full gap-4"):
             with ui.row().classes("items-center"):
-                ui.upload(label="Import CSV", auto_upload=True, multiple=True, on_upload=import_csv).props("accept=.csv").classes("max-w-sm")
-                ui.upload(label="Import state", auto_upload=True, on_upload=import_state).props("accept=.json").classes("max-w-sm")
-                ui.button("Export state", on_click=export_state)
-                ui.button("Export merged CSV", on_click=export_csv)
-                ui.button("Clear all data", color="negative", on_click=clear_state)
+                ui.upload(label="Import transactions CSV", auto_upload=True, multiple=True, on_upload=import_csv).props("accept=.csv").classes("max-w-sm")
+                ui.button("Export ledger CSV", on_click=export_csv)
+                ui.upload(label="Import full backup", auto_upload=True, on_upload=import_full_backup).props("accept=.json").classes("max-w-sm")
+                ui.button("Export full backup", on_click=export_full_backup)
+                ui.upload(label="Import rules/profile", auto_upload=True, on_upload=import_profile).props("accept=.json").classes("max-w-sm")
+                ui.button("Export rules/profile", on_click=export_profile)
+                ui.button("Clear transactions", color="warning", on_click=clear_transactions)
+                ui.button("Clear all data", color="negative", on_click=clear_all_data)
 
             if filters.period is None:
                 filters.period = default_period_filter(holder.state.transactions)
