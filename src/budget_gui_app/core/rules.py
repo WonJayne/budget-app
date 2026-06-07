@@ -36,7 +36,7 @@ class RuleEngine:
 
         for rule in self._rules:
             compatible = rule.rule_type == "transfer" or rule.rule_type == implied_flow_type
-            if compatible and rule.applies_to_source(base) and rule.matches(base.description):
+            if compatible and rule.applies_to_source(base) and rule.applies_to_transfer_direction(base) and rule.matches(base.description):
                 return replace(
                     base,
                     category=rule.category,

@@ -26,7 +26,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "e0487cb0c7440acb",
@@ -44,7 +45,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "ab022b9a16ca7484",
@@ -62,7 +64,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "995b2119e1f57c99",
@@ -80,7 +83,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "44d8499b8de69e5f",
@@ -98,7 +102,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "81fdf22a457aa62f",
@@ -116,7 +121,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "5051b0a2f4477ab5",
@@ -134,7 +140,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "0d07eb9a37c8dbac",
@@ -152,7 +159,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "3d9c9ef8a4ec517c",
@@ -170,7 +178,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "8ca3ba97f48391aa",
@@ -188,7 +197,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "7e7004a8413ae934",
@@ -206,7 +216,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "cb0937797ff9d9a0",
@@ -224,7 +235,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "56d5580d22d628a6",
@@ -242,7 +254,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "d8b029a52d50abe1",
@@ -260,7 +273,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "b919d90f18b44357",
@@ -278,7 +292,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "e7fa043a71697247",
@@ -296,7 +311,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "93f1721718414877",
@@ -314,7 +330,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "dad997c0131d1eb4",
@@ -332,7 +349,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "1b5d485ee5819a70",
@@ -350,7 +368,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     },
     {
       "id": "b554885a7b07f54f",
@@ -368,7 +387,8 @@
       "entry_source": "csv",
       "edited": false,
       "transfer_group_id": null,
-      "transfer_note": null
+      "transfer_note": null,
+      "transfer_direction": null
     }
   ],
   "rules": [
@@ -378,7 +398,8 @@
       "category": "Salary",
       "owner": "Flo",
       "rule_type": "inflow",
-      "priority": 100
+      "priority": 100,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "salary-nina",
@@ -386,7 +407,8 @@
       "category": "Salary",
       "owner": "Nina",
       "rule_type": "inflow",
-      "priority": 100
+      "priority": 100,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "gift",
@@ -394,7 +416,8 @@
       "category": "Gift",
       "owner": "Shared",
       "rule_type": "inflow",
-      "priority": 50
+      "priority": 50,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "migros",
@@ -402,7 +425,8 @@
       "category": "Groceries",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "coop",
@@ -410,7 +434,8 @@
       "category": "Groceries",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "sbb",
@@ -418,7 +443,8 @@
       "category": "Transport",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "swica",
@@ -426,7 +452,8 @@
       "category": "Insurance",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "etf",
@@ -434,7 +461,8 @@
       "category": "Investments",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "spotify",
@@ -442,7 +470,8 @@
       "category": "Subscriptions",
       "owner": "Flo",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "personal-care",
@@ -450,7 +479,8 @@
       "category": "Personal care",
       "owner": "Nina",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "rent",
@@ -458,7 +488,8 @@
       "category": "Housing",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "swisscom",
@@ -466,7 +497,8 @@
       "category": "Utilities",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "electricity",
@@ -474,7 +506,8 @@
       "category": "Utilities",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "restaurant",
@@ -482,7 +515,8 @@
       "category": "Eating out",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "daycare",
@@ -490,7 +524,8 @@
       "category": "Childcare",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     },
     {
       "id": "tax",
@@ -498,7 +533,8 @@
       "category": "Taxes",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "transfer_sign_scope": "any"
     }
   ],
   "category_styles": [

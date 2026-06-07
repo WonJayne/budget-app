@@ -10,6 +10,8 @@ from typing import Literal
 
 AssignmentSource = Literal["manual", "rule"] | None
 FlowType = Literal["inflow", "outflow", "transfer"]
+TransferDirection = Literal["in", "out", "none"]
+TransferSignScope = Literal["any", "in", "out"]
 SourceKind = Literal["imported", "manual"]
 EntrySource = Literal["csv", "manual"]
 
@@ -20,6 +22,15 @@ def flow_type_for_amount(amount: float) -> FlowType | None:
         return "inflow"
     if amount < 0:
         return "outflow"
+    return None
+
+
+def transfer_direction_for_amount(amount: float) -> TransferDirection | None:
+    """Return the monitoring direction implied by an internal transfer amount."""
+    if amount > 0:
+        return "in"
+    if amount < 0:
+        return "out"
     return None
 
 
@@ -79,6 +90,12 @@ class Transaction:
         return self.cash_flow_type or flow_type_for_amount(self.amount)
 
     @property
+    def transfer_direction(self) -> TransferDirection | None:
+        if self.flow_type != "transfer":
+            return None
+        return transfer_direction_for_amount(self.amount)
+
+    @property
     def stable_import_source(self) -> str | None:
         return self.import_source or import_source_default(self.source_file, self.entry_source)
 
@@ -92,6 +109,7 @@ class Rule:
     rule_type: FlowType = "outflow"
     priority: int = 0
     import_source: str | None = None
+    transfer_sign_scope: TransferSignScope = "any"
 
     def matches(self, description: str) -> bool:
         return self.pattern.lower() in description.lower()
@@ -99,9 +117,21 @@ class Rule:
     def applies_to_source(self, transaction: Transaction) -> bool:
         return self.import_source is None or self.import_source == transaction.stable_import_source
 
+    def applies_to_transfer_direction(self, transaction: Transaction) -> bool:
+        return self.rule_type != "transfer" or self.transfer_sign_scope == "any" or self.transfer_sign_scope == transfer_direction_for_amount(transaction.amount)
+
     @staticmethod
-    def make_id(pattern: str, category: str, owner: str, rule_type: FlowType = "outflow", priority: int = 0, salt: str = "", import_source: str | None = None) -> str:
-        return _generate_id(pattern.lower(), category, owner, rule_type, str(priority), import_source or "", salt)
+    def make_id(
+        pattern: str,
+        category: str,
+        owner: str,
+        rule_type: FlowType = "outflow",
+        priority: int = 0,
+        salt: str = "",
+        import_source: str | None = None,
+        transfer_sign_scope: TransferSignScope = "any",
+    ) -> str:
+        return _generate_id(pattern.lower(), category, owner, rule_type, str(priority), import_source or "", transfer_sign_scope, salt)
 
 
 @dataclass(frozen=True)

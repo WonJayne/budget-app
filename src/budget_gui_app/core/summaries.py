@@ -57,6 +57,14 @@ class TransferGroupSummary:
     def net_amount(self) -> float:
         return self.net_movement
 
+    @property
+    def internal_transfer_in(self) -> float:
+        return self.transfer_inflow
+
+    @property
+    def internal_transfer_out(self) -> float:
+        return self.transfer_outflow
+
 
 TransferSummaryRow = TransferGroupSummary
 
@@ -69,6 +77,26 @@ class TransferMonitorTotals:
     net_transfer_movement: float
     absolute_transfer_movement: float
     transfer_count: int
+
+    @property
+    def internal_transfer_in(self) -> float:
+        return self.unmatched_transfer_inflow + self.matched_transfers
+
+    @property
+    def internal_transfer_out(self) -> float:
+        return self.unmatched_transfer_outflow + self.matched_transfers
+
+    @property
+    def matched_internal_transfers(self) -> float:
+        return self.matched_transfers
+
+    @property
+    def net_internal_movement(self) -> float:
+        return self.net_transfer_movement
+
+    @property
+    def absolute_internal_movement(self) -> float:
+        return self.absolute_transfer_movement
 
 
 @dataclass(frozen=True)

@@ -55,7 +55,7 @@ def test_source_specific_rule_wins_over_global_rule_with_equal_priority() -> Non
 
 def test_rule_source_scope_survives_state_json_and_profile_roundtrip() -> None:
     repository = StateJsonRepository()
-    state = AppState(rules=(Rule("r1", "transfer", "Internal transfer", "Flo", "transfer", 7, "ZKB private account"),))
+    state = AppState(rules=(Rule("r1", "transfer", "Internal transfer", "Flo", "transfer", 7, "ZKB private account", "in"),))
 
     loaded_state = repository.from_dict(repository.to_dict(state))
     profile_state = repository.apply_profile_dict(AppState(), repository.to_profile_dict(state))
@@ -92,6 +92,40 @@ def test_transfer_rule_applies_to_positive_and_negative_transactions() -> None:
 
     assert positive.flow_type == "transfer"
     assert negative.flow_type == "transfer"
+
+
+def test_transfer_direction_is_derived_from_amount_sign() -> None:
+    positive, negative, zero = (
+        Transaction(**{**tx(amount=100.0).__dict__, "cash_flow_type": "transfer"}),
+        Transaction(**{**tx(amount=-100.0).__dict__, "cash_flow_type": "transfer"}),
+        Transaction(**{**tx(amount=0.0).__dict__, "cash_flow_type": "transfer"}),
+    )
+
+    assert positive.transfer_direction == "in"
+    assert negative.transfer_direction == "out"
+    assert zero.transfer_direction is None
+
+
+def test_transfer_rule_sign_scope_can_target_only_transfer_in() -> None:
+    rule = Rule("r1", "payment", "Internal transfer", "Shared", "transfer", transfer_sign_scope="in")
+
+    positive, negative = RuleEngine((rule,)).classify_many((tx("Payment", 100.0), tx("Payment", -100.0)))
+
+    assert positive.flow_type == "transfer"
+    assert positive.category == "Internal transfer"
+    assert negative.flow_type == "outflow"
+    assert negative.category is None
+
+
+def test_transfer_rule_sign_scope_can_target_only_transfer_out() -> None:
+    rule = Rule("r1", "payment", "Internal transfer", "Shared", "transfer", transfer_sign_scope="out")
+
+    positive, negative = RuleEngine((rule,)).classify_many((tx("Payment", 100.0), tx("Payment", -100.0)))
+
+    assert positive.flow_type == "inflow"
+    assert positive.category is None
+    assert negative.flow_type == "transfer"
+    assert negative.category == "Internal transfer"
 
 
 def test_transfer_transactions_are_excluded_from_totals_and_sankey_by_default() -> None:
