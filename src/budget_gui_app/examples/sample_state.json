@@ -610,5 +610,40 @@
       "category": "Taxes",
       "colour": "#475569"
     }
+  ],
+  "budget_targets": [
+    {
+      "id": "budget-salary",
+      "name": "Shared monthly inflow",
+      "target_type": "inflow",
+      "category": "Salary",
+      "owner": "Shared",
+      "currency": "CHF",
+      "monthly_amount": 9000.0,
+      "active": true,
+      "notes": "Demo monthly household inflow target"
+    },
+    {
+      "id": "budget-groceries",
+      "name": "Groceries plan",
+      "target_type": "outflow",
+      "category": "Groceries",
+      "owner": "Shared",
+      "currency": "CHF",
+      "monthly_amount": 900.0,
+      "active": true,
+      "notes": "Demo variable outflow target"
+    },
+    {
+      "id": "budget-savings",
+      "name": "Savings goal",
+      "target_type": "savings",
+      "category": null,
+      "owner": null,
+      "currency": "CHF",
+      "monthly_amount": 1500.0,
+      "active": true,
+      "notes": "Demo monthly potential savings target"
+    }
   ]
 }

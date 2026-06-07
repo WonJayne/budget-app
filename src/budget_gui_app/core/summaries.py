@@ -310,3 +310,127 @@ def yearly_overview(transactions: Iterable[Transaction], year: int, *, currency:
             )
         )
     return tuple(rows)
+
+@dataclass(frozen=True)
+class BudgetComparisonRow:
+    target_id: str
+    target_name: str
+    target_type: str
+    category: str | None
+    owner: str | None
+    currency: str
+    budget: float
+    actual: float
+    projected: float
+    difference: float
+    status: str
+
+
+@dataclass(frozen=True)
+class BudgetPlanTotals:
+    planned_inflow: float
+    actual_inflow: float
+    projected_inflow: float
+    planned_outflow: float
+    actual_outflow: float
+    projected_outflow: float
+    planned_savings: float
+    actual_savings: float
+    projected_savings: float
+    projected_budget_variance: float
+
+
+def _month_progress(year: int, month: int, today) -> float | None:
+    if (year, month) < (today.year, today.month):
+        return None
+    if (year, month) > (today.year, today.month):
+        return 0.0
+    _, days_in_month = __import__("calendar").monthrange(year, month)
+    return today.day / days_in_month
+
+
+def project_month_end(actual: float, year: int, month: int, today) -> float:
+    """Project month-end with a transparent linear month-to-date estimate."""
+    progress = _month_progress(year, month, today)
+    if progress is None:
+        return actual
+    if progress == 0:
+        return 0.0
+    return actual / progress
+
+
+def _target_actual(transactions: Iterable[Transaction], target, year: int, month: int, *, include_ignored: bool = False) -> float:
+    period = PeriodFilter("month", year, month)
+    rows = included_transactions(
+        transactions,
+        period=period,
+        include_inflows=True,
+        include_ignored=include_ignored,
+        currency=target.currency,
+        include_transfers=False,
+    )
+    if target.target_type == "savings":
+        totals = cash_flow_totals(rows)
+        return totals.balance
+    total = 0.0
+    for transaction in rows:
+        if transaction.flow_type != target.target_type:
+            continue
+        if target.category and transaction.category != target.category:
+            continue
+        if target.owner and transaction.owner != target.owner:
+            continue
+        total += transaction.amount if target.target_type == "inflow" else abs(transaction.amount)
+    return total
+
+
+def budget_comparison(transactions: Iterable[Transaction], targets, year: int, month: int, currency: str, today, *, include_ignored: bool = False) -> tuple[BudgetComparisonRow, ...]:
+    rows: list[BudgetComparisonRow] = []
+    for target in targets:
+        if not target.active or target.currency != currency:
+            continue
+        actual = _target_actual(transactions, target, year, month, include_ignored=include_ignored)
+        projected = project_month_end(actual, year, month, today)
+        budget = target.monthly_amount
+        difference = budget - projected if target.target_type == "outflow" else projected - budget
+        status = "on track" if difference >= -0.005 else ("overspend" if target.target_type == "outflow" else "below target")
+        rows.append(
+            BudgetComparisonRow(
+                target_id=target.id,
+                target_name=target.name,
+                target_type=target.target_type,
+                category=target.category,
+                owner=target.owner,
+                currency=target.currency,
+                budget=budget,
+                actual=actual,
+                projected=projected,
+                difference=difference,
+                status=status,
+            )
+        )
+    return tuple(rows)
+
+
+def budget_plan_totals(transactions: Iterable[Transaction], targets, year: int, month: int, currency: str, today, *, include_ignored: bool = False) -> BudgetPlanTotals:
+    active = tuple(target for target in targets if target.active and target.currency == currency)
+    planned_inflow = sum(target.monthly_amount for target in active if target.target_type == "inflow")
+    planned_outflow = sum(target.monthly_amount for target in active if target.target_type == "outflow")
+    planned_savings = sum(target.monthly_amount for target in active if target.target_type == "savings")
+    rows = included_transactions(transactions, period=PeriodFilter("month", year, month), include_inflows=True, include_ignored=include_ignored, currency=currency, include_transfers=False)
+    actuals = cash_flow_totals(rows)
+    projected_inflow = project_month_end(actuals.total_inflow, year, month, today)
+    projected_outflow = project_month_end(actuals.total_outflow, year, month, today)
+    projected_savings = projected_inflow - projected_outflow
+    return BudgetPlanTotals(
+        planned_inflow=planned_inflow,
+        actual_inflow=actuals.total_inflow,
+        projected_inflow=projected_inflow,
+        planned_outflow=planned_outflow,
+        actual_outflow=actuals.total_outflow,
+        projected_outflow=projected_outflow,
+        planned_savings=planned_savings,
+        actual_savings=actuals.balance,
+        projected_savings=projected_savings,
+        projected_budget_variance=projected_savings - planned_savings,
+    )

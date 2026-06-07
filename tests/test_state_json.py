@@ -57,10 +57,14 @@ def test_exporting_profile_contains_rules_and_colours_but_no_transactions() -> N
             "transfer_sign_scope": "any",
             "priority": 1,
             "import_source": None,
+            "transfer_group_strategy": "none",
+            "transfer_group_label": None,
+            "transfer_note": None,
         }
     ]
     assert profile["category_styles"] == [{"category": "Groceries", "colour": "#00ff00"}]
     assert profile["metadata"] == {"schema_version": 1}
+    assert profile["budget_targets"] == []
 
 
 def test_importing_profile_updates_rules_and_colours_without_changing_transactions() -> None:

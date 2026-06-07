@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from typing import Iterable
 
-from .models import AppMetadata, AppProfile, CategoryStyle, FlowType, Rule, Transaction
+from .models import AppMetadata, AppProfile, BudgetTarget, CategoryStyle, FlowType, Rule, Transaction
 from .rules import RuleEngine
 from .sankey import is_valid_hex_colour
 
@@ -33,6 +33,7 @@ class AppState:
     transactions: tuple[Transaction, ...] = ()
     rules: tuple[Rule, ...] = ()
     category_styles: tuple[CategoryStyle, ...] = ()
+    budget_targets: tuple[BudgetTarget, ...] = ()
     metadata: AppMetadata = AppMetadata()
     profile: AppProfile = AppProfile()
 
@@ -77,6 +78,16 @@ class AppState:
             if rule.import_source:
                 import_sources.add(rule.import_source)
 
+        for target in self.budget_targets:
+            if target.owner:
+                owners.add(target.owner)
+            if target.category:
+                if target.target_type == "inflow":
+                    inflow_categories.add(target.category)
+                elif target.target_type == "outflow":
+                    outflow_categories.add(target.category)
+            currencies.add(target.currency)
+
         for style in self.category_styles:
             if style.category:
                 inflow_categories.add(style.category)
@@ -90,6 +101,52 @@ class AppState:
             accounts=tuple(sorted(accounts)),
             import_sources=tuple(sorted(import_sources)),
         )
+
+    def import_transactions_append(self, transactions: Iterable[Transaction]) -> tuple["AppState", dict[str, int]]:
+        rows = tuple(transactions)
+        existing_ids = {transaction.id for transaction in self.transactions}
+        new_rows = tuple(transaction for transaction in rows if transaction.id not in existing_ids)
+        report = {"added": len(new_rows), "skipped": len(rows) - len(new_rows), "replaced": 0, "missing": 0}
+        return (self.add_transactions(new_rows) if new_rows else self, report)
+
+    def import_transactions_replace_source_period(self, transactions: Iterable[Transaction], import_source: str) -> tuple["AppState", dict[str, int]]:
+        rows = tuple(transactions)
+        if not rows:
+            return self, {"added": 0, "skipped": 0, "replaced": 0, "missing": 0}
+        start = min(transaction.date for transaction in rows)
+        end = max(transaction.date for transaction in rows)
+        kept = tuple(
+            transaction
+            for transaction in self.transactions
+            if not (
+                transaction.entry_source == "csv"
+                and transaction.stable_import_source == import_source
+                and start <= transaction.date <= end
+            )
+        )
+        replaced = len(self.transactions) - len(kept)
+        merged = kept + rows
+        report = {"added": len(rows), "skipped": 0, "replaced": replaced, "missing": replaced}
+        return replace(self, transactions=RuleEngine(self.rules).classify_many(merged)), report
+
+    def reconcile_transactions_source_period(self, transactions: Iterable[Transaction], import_source: str) -> dict[str, int]:
+        rows = tuple(transactions)
+        if not rows:
+            return {"added": 0, "skipped": 0, "replaced": 0, "missing": 0}
+        start = min(transaction.date for transaction in rows)
+        end = max(transaction.date for transaction in rows)
+        incoming_ids = {transaction.id for transaction in rows}
+        existing_period_ids = {
+            transaction.id
+            for transaction in self.transactions
+            if transaction.entry_source == "csv" and transaction.stable_import_source == import_source and start <= transaction.date <= end
+        }
+        return {
+            "added": len(incoming_ids - existing_period_ids),
+            "skipped": len(incoming_ids & existing_period_ids),
+            "replaced": 0,
+            "missing": len(existing_period_ids - incoming_ids),
+        }
 
     def add_transactions(self, transactions: Iterable[Transaction]) -> "AppState":
         existing_ids = {transaction.id for transaction in self.transactions}
@@ -266,6 +323,15 @@ class AppState:
         else:
             styles.pop(category, None)
         return replace(self, category_styles=tuple(styles[cat] for cat in sorted(styles)))
+
+    def add_budget_target(self, target: BudgetTarget) -> "AppState":
+        return replace(self, budget_targets=self.budget_targets + (target,))
+
+    def update_budget_target(self, target: BudgetTarget) -> "AppState":
+        return replace(self, budget_targets=tuple(target if existing.id == target.id else existing for existing in self.budget_targets))
+
+    def remove_budget_target(self, target_id: str) -> "AppState":
+        return replace(self, budget_targets=tuple(target for target in self.budget_targets if target.id != target_id))
 
     def clear_transactions(self) -> "AppState":
         """Remove ledger/manual entries while keeping rules, colours, and metadata."""

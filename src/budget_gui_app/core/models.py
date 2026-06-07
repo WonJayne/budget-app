@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import date
@@ -12,6 +13,8 @@ AssignmentSource = Literal["manual", "rule"] | None
 FlowType = Literal["inflow", "outflow", "transfer"]
 TransferDirection = Literal["in", "out", "none"]
 TransferSignScope = Literal["any", "in", "out"]
+TransferGroupStrategy = Literal["none", "fixed", "same_day_amount", "same_month_amount"]
+BudgetTargetType = Literal["inflow", "outflow", "savings"]
 SourceKind = Literal["imported", "manual"]
 EntrySource = Literal["csv", "manual"]
 
@@ -37,6 +40,12 @@ def transfer_direction_for_amount(amount: float) -> TransferDirection | None:
 def _generate_id(*parts: str) -> str:
     """Generate a short deterministic identifier from string parts."""
     return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()[:16]
+
+
+def slugify(value: str) -> str:
+    """Return a stable lowercase slug for user-visible labels."""
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or "group"
 
 
 def import_source_default(source_file: str | None, entry_source: EntrySource = "csv") -> str | None:
@@ -110,6 +119,9 @@ class Rule:
     priority: int = 0
     import_source: str | None = None
     transfer_sign_scope: TransferSignScope = "any"
+    transfer_group_strategy: TransferGroupStrategy = "none"
+    transfer_group_label: str | None = None
+    transfer_note: str | None = None
 
     def matches(self, description: str) -> bool:
         return self.pattern.lower() in description.lower()
@@ -130,8 +142,42 @@ class Rule:
         salt: str = "",
         import_source: str | None = None,
         transfer_sign_scope: TransferSignScope = "any",
+        transfer_group_strategy: TransferGroupStrategy = "none",
+        transfer_group_label: str | None = None,
     ) -> str:
-        return _generate_id(pattern.lower(), category, owner, rule_type, str(priority), import_source or "", transfer_sign_scope, salt)
+        return _generate_id(pattern.lower(), category, owner, rule_type, str(priority), import_source or "", transfer_sign_scope, transfer_group_strategy, transfer_group_label or "", salt)
+
+
+def transfer_group_id_for_rule(rule: Rule, transaction: Transaction) -> str | None:
+    """Return the automatic transfer group ID a transfer rule assigns."""
+    if rule.rule_type != "transfer" or rule.transfer_group_strategy == "none":
+        return None
+    label = slugify(rule.transfer_group_label or f"rule-{rule.id[:8]}")
+    amount = f"{abs(transaction.amount):.2f}"
+    if rule.transfer_group_strategy == "fixed":
+        return label
+    if rule.transfer_group_strategy == "same_day_amount":
+        return f"{label}-{transaction.date.isoformat()}-{amount}-{transaction.currency}"
+    if rule.transfer_group_strategy == "same_month_amount":
+        return f"{label}-{transaction.date:%Y-%m}-{amount}-{transaction.currency}"
+    return None
+
+
+@dataclass(frozen=True)
+class BudgetTarget:
+    id: str
+    name: str
+    target_type: BudgetTargetType
+    category: str | None
+    owner: str | None
+    currency: str
+    monthly_amount: float
+    active: bool = True
+    notes: str | None = None
+
+    @staticmethod
+    def make_id(name: str, target_type: BudgetTargetType, currency: str, salt: str = "") -> str:
+        return _generate_id("budget", name.lower(), target_type, currency, salt)
 
 
 @dataclass(frozen=True)
