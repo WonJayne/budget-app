@@ -11,7 +11,7 @@ from nicegui import ui
 from ..core.periods import PeriodFilter, available_years, default_period_filter
 from ..core.sankey import DEFAULT_NODE_COLOUR, SankeyBuilder
 from ..core.state import AppState
-from ..core.summaries import cash_flow_totals, included_transactions, summarize_transactions, yearly_overview
+from ..core.summaries import cash_flow_totals, included_transactions, summarize_transactions, transfer_summary, yearly_overview
 DEFAULT_PALETTE = [
     "#4C78A8", "#F58518", "#54A24B", "#E45756",
     "#72B7B2", "#B279A2", "#FF9DA6", "#9D755D",
@@ -27,6 +27,7 @@ class Filters:
     currency: str = "All"
     include_inflows: bool = True
     include_ignored: bool = False
+    show_transfers: bool = False
     selected_colour_category: str | None = None
     selected_colour: str = DEFAULT_PALETTE[0]
 
@@ -97,6 +98,7 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                     ui.select(currencies, label="Currency", value=filters.currency, on_change=lambda event: (setattr(filters, "currency", event.value), content.refresh())).classes("w-36")
                     ui.switch("Include inflows", value=filters.include_inflows, on_change=lambda event: (setattr(filters, "include_inflows", event.value), content.refresh()))
                     ui.switch("Include ignored", value=filters.include_ignored, on_change=lambda event: (setattr(filters, "include_ignored", event.value), content.refresh()))
+                    ui.switch("Show internal transfers", value=filters.show_transfers, on_change=lambda event: (setattr(filters, "show_transfers", event.value), content.refresh()))
                 ui.label(f"Showing: {filters.period.label} • Currency: {filters.currency} • Owners: {filters.owner}").classes("text-sm text-gray-600")
 
             with ui.row().classes("gap-4"):
@@ -126,6 +128,7 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         currency=currency_value,
                         include_inflows=filters.include_inflows,
                         include_ignored=filters.include_ignored,
+                        include_transfers=filters.show_transfers,
                     )
                     ui.plotly(figure).classes("w-full h-[560px]")
                 with ui.tab_panel(yearly_tab):
@@ -139,6 +142,8 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                             "balance": f"{row.balance:.2f}",
                             "potential_savings": f"{row.potential_savings:.2f}",
                             "deficit": f"{row.deficit:.2f}",
+                            "transfer_count": row.transfer_count,
+                            "transfer_absolute_movement": f"{row.transfer_absolute_movement:.2f}",
                         }
                         for row in yearly_overview(state.transactions, selected_year, currency=currency_value, include_ignored=filters.include_ignored)
                     ]
@@ -149,6 +154,8 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         {"name": "balance", "label": "Balance", "field": "balance", "align": "right"},
                         {"name": "potential_savings", "label": "Potential savings", "field": "potential_savings", "align": "right"},
                         {"name": "deficit", "label": "Deficit", "field": "deficit", "align": "right"},
+                        {"name": "transfer_count", "label": "Transfer count", "field": "transfer_count", "align": "right"},
+                        {"name": "transfer_absolute_movement", "label": "Transfer movement", "field": "transfer_absolute_movement", "align": "right"},
                     ], rows=rows).classes("w-full")
                 with ui.tab_panel(category_tab):
                     selected_year = filters.period.year or years[-1]
@@ -167,6 +174,27 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         {"name": "total_amount", "label": "Total amount", "field": "total_amount", "align": "right"},
                         {"name": "share", "label": "Share of yearly flow", "field": "share", "align": "right"},
                     ], rows=rows).classes("w-full")
+                    transfer_rows = [
+                        {
+                            "category": row.category,
+                            "owner": row.owner,
+                            "count": row.count,
+                            "net_amount": f"{row.net_amount:.2f}",
+                            "absolute_movement": f"{row.absolute_movement:.2f}",
+                        }
+                        for row in transfer_summary(included_transactions(state.transactions, period=filters.period, owner=owner_value, currency=currency_value, include_inflows=True, include_ignored=filters.include_ignored, include_transfers=True))
+                    ]
+                    if transfer_rows:
+                        ui.label("Internal transfer summary").classes("font-bold mt-4")
+                        ui.label("Transfers are neutral by default and excluded from household inflow/outflow totals.").classes("text-sm text-gray-600")
+                        ui.table(columns=[
+                            {"name": "category", "label": "Category", "field": "category", "align": "left"},
+                            {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
+                            {"name": "count", "label": "Count", "field": "count", "align": "right"},
+                            {"name": "net_amount", "label": "Net amount", "field": "net_amount", "align": "right"},
+                            {"name": "absolute_movement", "label": "Absolute movement", "field": "absolute_movement", "align": "right"},
+                        ], rows=transfer_rows).classes("w-full")
+
 
             with ui.expansion("Category colour editor", icon="palette").classes("w-full"):
                 catalog = state.option_catalog()

@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from ..core.models import AppMetadata, AppProfile, CategoryStyle, Rule, Transaction
+from ..core.models import AppMetadata, AppProfile, CategoryStyle, Rule, Transaction, import_source_default
 from ..core.state import AppState
 
 
@@ -107,6 +107,8 @@ class StateJsonRepository:
             "amount": tx.amount,
             "currency": tx.currency,
             "source_file": tx.source_file,
+            "import_source": tx.stable_import_source,
+            "cash_flow_type": tx.flow_type,
             "category": tx.category,
             "owner": tx.owner,
             "assignment_source": tx.assignment_source,
@@ -124,6 +126,7 @@ class StateJsonRepository:
             "owner": rule.owner,
             "rule_type": rule.rule_type,
             "priority": rule.priority,
+            "import_source": rule.import_source,
         }
 
     def _category_style_to_dict(self, style: CategoryStyle) -> dict[str, str | None]:
@@ -138,6 +141,23 @@ class StateJsonRepository:
             source_kind = "manual" if entry_source == "manual" else "imported"
         return source_kind, entry_source
 
+    def _import_source_from_item(self, item: dict[str, Any], entry_source: str) -> str | None:
+        value = item.get("import_source")
+        if value:
+            return str(value)
+        return import_source_default(item.get("source_file"), entry_source)
+
+    def _cash_flow_type_from_item(self, item: dict[str, Any]) -> str | None:
+        value = item.get("cash_flow_type")
+        if value in ("inflow", "outflow", "transfer"):
+            return value
+        amount = float(item.get("amount", 0))
+        if amount > 0:
+            return "inflow"
+        if amount < 0:
+            return "outflow"
+        return None
+
     def _transactions_from_data(self, data: dict[str, Any]) -> tuple[Transaction, ...]:
         transactions: list[Transaction] = []
         for item in data.get("transactions", []):
@@ -151,6 +171,8 @@ class StateJsonRepository:
                     amount=float(item["amount"]),
                     currency=item["currency"],
                     source_file=item.get("source_file"),
+                    import_source=self._import_source_from_item(item, entry_source),
+                    cash_flow_type=self._cash_flow_type_from_item(item),
                     category=item.get("category"),
                     owner=item.get("owner"),
                     assignment_source=item.get("assignment_source"),
@@ -171,6 +193,7 @@ class StateJsonRepository:
                 owner=item["owner"],
                 rule_type=item.get("rule_type", "outflow"),
                 priority=int(item.get("priority", 0)),
+                import_source=item.get("import_source"),
             )
             for item in data.get("rules", [])
         )

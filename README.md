@@ -59,19 +59,27 @@ The **Data / Rules / Review** tab supports:
 - creating a reusable rule from a reviewed transaction;
 - ignoring transactions that should not be classified.
 
-Rules are case-insensitive description substring matches. Each rule has a visible `inflow` or `outflow` type, so inflow rules apply only to positive transactions and outflow rules apply only to negative transactions. Rule priority is respected, and manual assignments survive rule reapplication. Editing or deleting rules removes stale rule-based classifications.
+Rules are case-insensitive description substring matches. Each rule has a visible `inflow`, `outflow`, or `transfer` type. Inflow rules apply only to positive transactions, outflow rules apply only to negative transactions, and transfer rules can apply to either sign because bank exports may show either side of an internal movement. Rules can be global with Source = `Any`, or source-scoped to one stable import source such as `ZKB private account`, `Viseca credit card`, or `Manual`. Priority is respected, and source-specific rules win over global rules with the same priority. Manual assignments survive rule reapplication. Editing or deleting rules removes stale rule-based classifications, including stale rule-based transfers.
 
-The **All entries** ledger is the main source-of-truth view for the cash-flow data that creates the Sankey. It shows date, source (`csv` or `manual`), account, flow type, description, amount, currency, category, owner, assignment source, ignored status, and row actions. The same explicit period model used by the rest of the app applies to the ledger: **All** shows every entry, **Year** shows the selected year, and **Month** shows only the selected month.
+The **All entries** ledger is the main source-of-truth view for the cash-flow data that creates the Sankey. It shows date, entry source (`csv` or `manual`), stable import source, account, flow type, description, amount, currency, category, owner, assignment source, ignored status, and row actions. The import source filter lets users inspect one bank/card CSV source at a time. The same explicit period model used by the rest of the app applies to the ledger: **All** shows every entry, **Year** shows the selected year, and **Month** shows only the selected month.
 
 Imported CSV entries can be edited in the ledger when a bank export needs correction. Editing preserves the original transaction ID so duplicate detection and saved state stay consistent. The edit dialog lets users change date, flow type, description, amount, currency, account, category, owner, and ignored status. Users can type positive amounts for both inflows and outflows; the selected flow type normalises storage so inflows remain positive and outflows remain negative.
 
 For duplicate CSV rows or unwanted imported entries, use **Ignore** whenever possible. Ignored entries remain visible through the ledger status filter, can be unignored later, and are excluded from Sankey and summaries by default.
 
-Manual entries are stored as local transactions with `source_kind="manual"`/`entry_source="manual"`, no source file, and manual assignment provenance. Inflow entries are stored as positive amounts; outflow entries are stored as negative amounts. Manual entries can be added from the existing manual-entry controls and edited later through the same ledger edit dialog.
+Manual entries are stored as local transactions with `source_kind="manual"`/`entry_source="manual"`, `import_source="Manual"`, no source file, and manual assignment provenance. Inflow entries are stored as positive amounts; outflow entries are stored as negative amounts. Manual transfer entries preserve the amount sign entered by the user. Manual entries can be added from the existing manual-entry controls and edited later through the same ledger edit dialog.
+
+## Import sources and internal transfers
+
+An **import source** is a stable, human-readable label for where a transaction came from, such as a bank account, card feed, or CSV source. `source_file` remains the technical uploaded filename, while `import_source` is the logical label used by rules and ledger filtering.
+
+A **global rule** has Source = `Any` and applies across all import sources. A **source-scoped rule** applies only when the transaction has the selected import source. This is useful for ambiguous descriptions such as `Transfer`, `Payment`, `Card payment`, or `Salary`.
+
+An **internal transfer** is movement between your own accounts or pools, not real household income or expense. Examples include credit card settlements, savings transfers, brokerage transfers, personal-to-shared account transfers, and movements between household pools. Transfers remain visible in the ledger and backup JSON, but they are neutral in the budget by default. For ETF purchases or investments, deliberately choose either `transfer` if you see the movement as moving money between your own assets, or `outflow -> Investments` if you want the budget Sankey to show money allocated to investments.
 
 ## Visualisation
 
-The **Visualisation** tab includes an explicit period selector for **All**, **Year**, and **Month** views, plus owner, currency, inflow, and ignored-transaction filters. Monthly view is the default so day-to-day household decisions focus on one budget month; yearly view is used for overview/reporting. It renders an embedded Plotly Sankey using this household-pool structure:
+The **Visualisation** tab includes an explicit period selector for **All**, **Year**, and **Month** views, plus owner, currency, inflow, ignored-transaction, and internal-transfer filters. Monthly view is the default so day-to-day household decisions focus on one budget month; yearly view is used for overview/reporting. It renders an embedded Plotly Sankey using this household-pool structure:
 
 ```text
 inflow category -> owner inflow -> Household pool -> owner outflow -> outflow category
@@ -79,7 +87,7 @@ inflow category -> owner inflow -> Household pool -> owner outflow -> outflow ca
 
 When inflows exceed outflows, the Sankey shows `Household pool -> Potential savings`. When outflows exceed inflows, it shows `Deficit -> Household pool`.
 
-The page also shows summary cards for total inflow, total outflow, balance, potential savings, and deficit. Tabs provide the Sankey, a yearly overview table aggregated by month, and a category/owner summary table that distinguishes inflows from outflows.
+The page also shows summary cards for total inflow, total outflow, balance, potential savings, and deficit. Internal transfers are neutral by default: they are excluded from inflow/outflow totals, balance, deficit, potential savings, yearly/monthly totals, and category inflow/outflow summaries. The optional **Show internal transfers** toggle shows a separate neutral Sankey lane and a transfer summary with category, owner, count, net amount, and absolute movement. Tabs provide the Sankey, a yearly overview table aggregated by month, and a category/owner summary table that distinguishes inflows from outflows.
 
 ## Category colours
 
@@ -93,16 +101,16 @@ The **How it works** tab explains CSV import, manual entries, inflow/outflow rul
 
 The app separates transaction data, reusable profile settings, and full backups:
 
-- **Import transactions CSV** appends new CSV transactions to the current ledger and skips duplicate transaction IDs. It keeps existing rules, colours, metadata, manual edits, and ignored flags.
+- **Import transactions CSV** appends new CSV transactions to the current ledger and skips duplicate transaction IDs. Each imported row gets a stable `import_source` label, defaulting to the uploaded CSV filename stem, for source-scoped rules and ledger filtering. It keeps existing rules, colours, metadata, manual edits, and ignored flags.
 - **Export ledger CSV** exports the transaction ledger only for spreadsheet use.
-- **Export full backup** writes a local JSON file containing complete app state: schema metadata, profile options, transactions, manual entries, edited ledger fields, ignored flags, assignment provenance, rules, and category colours.
+- **Export full backup** writes a local JSON file containing complete app state: schema metadata, profile options, transactions, manual entries, import sources, cash-flow/transfer classifications, edited ledger fields, ignored flags, assignment provenance, source-scoped rules, and category colours.
 - **Import full backup** replaces the complete current app state with the JSON backup.
-- **Export rules/profile** writes JSON containing schema metadata, derived/default selector options, rules, and category colours, with no transaction ledger data.
+- **Export rules/profile** writes JSON containing schema metadata, derived/default selector options, source-scoped inflow/outflow/transfer rules, and category colours, with no transaction ledger data.
 - **Import rules/profile** updates rules, colours, profile options, and metadata while keeping the existing transaction ledger. Rules are reapplied so rule-based classifications match the imported profile.
 - **Clear transactions** removes imported and manual ledger entries while keeping rules, colours, profile options, and metadata.
 - **Clear all data** resets the local app to an empty state, removing transactions, rules, colours, profile options, and metadata customisations.
 
-Older full-backup files with missing fields are loaded with safe defaults where practical; for example, old rules without `rule_type` default to `outflow`, and old transactions without `source_kind` infer manual entries when `source_file` is missing or `manual`.
+Older full-backup files with missing fields are loaded with safe defaults where practical; for example, old rules without `rule_type` default to `outflow`, old transactions without `cash_flow_type` derive inflow/outflow from the amount sign, and old transactions without `import_source` derive it from the source filename basename/stem or use `Manual` for manual entries.
 
 ## Examples
 
