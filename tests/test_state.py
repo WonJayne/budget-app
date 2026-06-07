@@ -62,3 +62,11 @@ def test_clearing_all_data_removes_transactions_rules_profile_and_resets_metadat
     assert cleared.rules == ()
     assert cleared.category_styles == ()
     assert cleared.metadata.schema_version == 1
+
+
+def test_invalid_category_colour_is_rejected() -> None:
+    state = AppState.empty()
+
+    updated = state.set_category_colour("Groceries", "blue")
+
+    assert updated == state

@@ -8,6 +8,7 @@ from typing import Iterable
 
 from .models import AppMetadata, AppProfile, CategoryStyle, FlowType, Rule, Transaction
 from .rules import RuleEngine
+from .sankey import is_valid_hex_colour
 
 DEFAULT_OWNERS = ("Flo", "Nina", "Shared")
 DEFAULT_CURRENCY = "CHF"
@@ -247,6 +248,8 @@ class AppState:
     def set_category_colour(self, category: str, colour: str | None) -> "AppState":
         styles = self.category_style_map()
         if colour:
+            if not is_valid_hex_colour(colour):
+                return self
             styles[category] = CategoryStyle(category=category, colour=colour)
         else:
             styles.pop(category, None)

@@ -100,3 +100,32 @@ def test_sankey_period_colours_never_include_none() -> None:
 
     assert None not in list(fig.data[0]["node"]["color"])
     assert None not in list(fig.data[0]["link"]["color"])
+
+
+def test_yearly_overview_balance_ignores_transfers_but_reports_transfer_columns() -> None:
+    rows = (
+        tx("salary", date(2026, 1, 1), 1000, "Salary"),
+        tx("rent", date(2026, 1, 2), -700, "Rent"),
+        Transaction(
+            id="transfer",
+            date=date(2026, 1, 3),
+            account="manual",
+            description="Savings transfer",
+            amount=-400,
+            currency="CHF",
+            cash_flow_type="transfer",
+            category="Savings transfer",
+            owner="Shared",
+            assignment_source="manual",
+            source_kind="manual",
+        ),
+    )
+
+    overview = yearly_overview(rows, 2026)
+
+    assert overview[0].total_inflow == 1000
+    assert overview[0].total_outflow == 700
+    assert overview[0].balance == 300
+    assert overview[0].transfer_count == 1
+    assert overview[0].transfer_absolute_movement == 400
+    assert overview[0].transfer_net_movement == -400

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 from collections import defaultdict
 from typing import Iterable, Mapping
 
@@ -11,11 +13,71 @@ from .models import CategoryStyle, Transaction
 from .periods import PeriodFilter
 from .summaries import cash_flow_totals
 
-DEFAULT_NODE_COLOUR = "#9ca3af"
-DEFAULT_LINK_COLOUR = "rgba(156, 163, 175, 0.35)"
+DEFAULT_PALETTE = [
+    "#4C78A8", "#F58518", "#54A24B", "#E45756",
+    "#72B7B2", "#B279A2", "#FF9DA6", "#9D755D",
+    "#BAB0AC", "#A0CBE8", "#FFBE7D", "#8CD17D",
+    "#D4A6C8", "#F1CE63", "#499894", "#86BCB6",
+    "#7F7F7F", "#BCBD22", "#17BECF", "#9467BD",
+]
+
+HOUSEHOLD_POOL_COLOUR = "#34495E"
+POTENTIAL_SAVINGS_COLOUR = "#54A24B"
+DEFICIT_COLOUR = "#E45756"
+INFLOW_OWNER_COLOUR = "#72B7B2"
+OUTFLOW_OWNER_COLOUR = "#F58518"
+TRANSFER_COLOUR = "#9D755D"
+UNASSIGNED_COLOUR = "#BAB0AC"
+DEFAULT_NODE_COLOUR = UNASSIGNED_COLOUR
+DEFAULT_LINK_COLOUR = "rgba(186, 176, 172, 0.35)"
 POOL_NODE = "Household pool"
 POTENTIAL_SAVINGS_NODE = "Potential savings"
 DEFICIT_NODE = "Deficit"
+_HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+
+def is_valid_hex_colour(colour: str | None) -> bool:
+    """Return whether a colour is an accepted #RRGGBB value."""
+    return bool(colour and _HEX_RE.fullmatch(colour))
+
+
+def hex_to_rgba(hex_colour: str, alpha: float = 0.45) -> str:
+    """Convert #RRGGBB into a Plotly rgba() colour string."""
+    if not is_valid_hex_colour(hex_colour):
+        hex_colour = DEFAULT_NODE_COLOUR
+    value = hex_colour.lstrip("#")
+    red = int(value[0:2], 16)
+    green = int(value[2:4], 16)
+    blue = int(value[4:6], 16)
+    return f"rgba({red}, {green}, {blue}, {alpha})"
+
+
+def stable_palette_colour(category: str) -> str:
+    """Return a deterministic fallback palette colour for a category."""
+    digest = hashlib.sha256(category.encode("utf-8")).hexdigest()
+    return DEFAULT_PALETTE[int(digest[:8], 16) % len(DEFAULT_PALETTE)]
+
+
+def category_colour(category: str, styles: Mapping[str, CategoryStyle]) -> str:
+    """Return the saved category colour or a deterministic valid fallback."""
+    saved = styles.get(category).colour if category in styles else None
+    return saved if is_valid_hex_colour(saved) else stable_palette_colour(category)
+
+
+def sankey_node_colour(label: str, styles: Mapping[str, CategoryStyle]) -> str:
+    if label == POOL_NODE:
+        return HOUSEHOLD_POOL_COLOUR
+    if label == POTENTIAL_SAVINGS_NODE:
+        return POTENTIAL_SAVINGS_COLOUR
+    if label == DEFICIT_NODE:
+        return DEFICIT_COLOUR
+    if label.endswith(" inflow"):
+        return INFLOW_OWNER_COLOUR
+    if label.endswith(" outflow"):
+        return OUTFLOW_OWNER_COLOUR
+    if label in {"Unassigned inflow", "Unassigned outflow"}:
+        return UNASSIGNED_COLOUR
+    return category_colour(label, styles)
 
 
 class SankeyBuilder:
@@ -38,7 +100,7 @@ class SankeyBuilder:
         filtered = [
             transaction
             for transaction in transactions
-            if self._included(transaction, include_inflows, include_ignored, month, owner, currency, period, include_transfers)
+            if self._included(transaction, include_inflows, include_ignored, month, owner, currency, period)
         ]
 
         node_index: dict[str, int] = {}
@@ -49,11 +111,8 @@ class SankeyBuilder:
             if label not in node_index:
                 node_index[label] = len(labels)
                 labels.append(label)
-                colours.append(styles.get(label, CategoryStyle(label)).colour or DEFAULT_NODE_COLOUR)
+                colours.append(sankey_node_colour(label, styles))
             return node_index[label]
-
-        def category_colour(label: str) -> str:
-            return styles.get(label, CategoryStyle(label)).colour or DEFAULT_NODE_COLOUR
 
         flows: defaultdict[tuple[int, int], float] = defaultdict(float)
         flow_counts: defaultdict[tuple[int, int], int] = defaultdict(int)
@@ -68,7 +127,7 @@ class SankeyBuilder:
             flows[(source, target)] += value
             flow_counts[(source, target)] += count
             flow_share_basis[(source, target)] = share_basis
-            link_colours_by_pair[(source, target)] = colour or DEFAULT_LINK_COLOUR
+            link_colours_by_pair[(source, target)] = colour if colour else DEFAULT_LINK_COLOUR
 
         for transaction in filtered:
             flow_type = transaction.flow_type
@@ -76,27 +135,23 @@ class SankeyBuilder:
                 category = transaction.category or "Uncategorised inflow"
                 owner_name = transaction.owner or "Unassigned inflow"
                 owner_node = f"{owner_name} inflow" if owner_name != "Unassigned inflow" else owner_name
-                add_flow(category, owner_node, transaction.amount, category_colour(category), share_basis="inflow", count=1)
-                add_flow(owner_node, POOL_NODE, transaction.amount, share_basis="inflow", count=1)
+                colour = category_colour(category, styles)
+                add_flow(category, owner_node, transaction.amount, hex_to_rgba(colour), share_basis="inflow", count=1)
+                add_flow(owner_node, POOL_NODE, transaction.amount, hex_to_rgba(INFLOW_OWNER_COLOUR), share_basis="inflow", count=1)
             elif flow_type == "outflow":
                 category = transaction.category or "Uncategorised outflow"
                 owner_name = transaction.owner or "Unassigned outflow"
                 owner_node = f"{owner_name} outflow" if owner_name != "Unassigned outflow" else owner_name
                 value = abs(transaction.amount)
-                add_flow(POOL_NODE, owner_node, value, share_basis="outflow", count=1)
-                add_flow(owner_node, category, value, category_colour(category), share_basis="outflow", count=1)
-            elif flow_type == "transfer" and include_transfers:
-                category = transaction.category or "Internal transfer"
-                owner_name = transaction.owner or "Unassigned transfer"
-                owner_node = f"{owner_name} transfers" if owner_name != "Unassigned transfer" else owner_name
-                add_flow(owner_node, "Internal transfers", abs(transaction.amount), share_basis="transfer", count=1)
-                add_flow("Internal transfers", category, abs(transaction.amount), category_colour(category), share_basis="transfer", count=1)
+                colour = category_colour(category, styles)
+                add_flow(POOL_NODE, owner_node, value, hex_to_rgba(OUTFLOW_OWNER_COLOUR), share_basis="outflow", count=1)
+                add_flow(owner_node, category, value, hex_to_rgba(colour), share_basis="outflow", count=1)
 
         totals = cash_flow_totals(filtered)
         if totals.balance > 0:
-            add_flow(POOL_NODE, POTENTIAL_SAVINGS_NODE, totals.balance, share_basis="inflow")
+            add_flow(POOL_NODE, POTENTIAL_SAVINGS_NODE, totals.balance, hex_to_rgba(POTENTIAL_SAVINGS_COLOUR), share_basis="inflow")
         elif totals.balance < 0:
-            add_flow(DEFICIT_NODE, POOL_NODE, abs(totals.balance), share_basis="outflow")
+            add_flow(DEFICIT_NODE, POOL_NODE, abs(totals.balance), hex_to_rgba(DEFICIT_COLOUR), share_basis="outflow")
 
         sources = [source for source, _ in flows]
         targets = [target for _, target in flows]
@@ -107,7 +162,7 @@ class SankeyBuilder:
             source_label = labels[pair[0]]
             target_label = labels[pair[1]]
             basis = flow_share_basis.get(pair, "flow")
-            denominator = totals.total_inflow if basis == "inflow" else totals.total_outflow if basis == "outflow" else sum(value for pair2, value in flows.items() if flow_share_basis.get(pair2) == "transfer") if basis == "transfer" else 0.0
+            denominator = totals.total_inflow if basis == "inflow" else totals.total_outflow if basis == "outflow" else 0.0
             share = value / denominator if denominator else 0.0
             customdata.append((source_label, target_label, f"CHF {value:,.2f}", f"Share of total {basis}: {share:.1%}", flow_counts.get(pair, 0)))
 
@@ -137,12 +192,9 @@ class SankeyBuilder:
         owner: str | None = None,
         currency: str | None = None,
         period: PeriodFilter | None = None,
-        include_transfers: bool = False,
     ) -> bool:
         flow_type = transaction.flow_type
-        if flow_type is None:
-            return False
-        if flow_type == "transfer" and not include_transfers:
+        if flow_type is None or flow_type == "transfer":
             return False
         if not include_ignored and transaction.ignored:
             return False

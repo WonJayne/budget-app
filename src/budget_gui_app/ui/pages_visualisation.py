@@ -9,15 +9,9 @@ from dataclasses import dataclass
 from nicegui import ui
 
 from ..core.periods import PeriodFilter, available_years, default_period_filter
-from ..core.sankey import DEFAULT_NODE_COLOUR, SankeyBuilder
+from ..core.sankey import DEFAULT_PALETTE, SankeyBuilder, category_colour, is_valid_hex_colour
 from ..core.state import AppState
 from ..core.summaries import cash_flow_totals, included_transactions, summarize_transactions, transfer_summary, yearly_overview
-DEFAULT_PALETTE = [
-    "#4C78A8", "#F58518", "#54A24B", "#E45756",
-    "#72B7B2", "#B279A2", "#FF9DA6", "#9D755D",
-    "#BAB0AC", "#A0CBE8", "#FFBE7D", "#8CD17D",
-    "#D4A6C8", "#F1CE63", "#499894", "#86BCB6",
-]
 
 
 @dataclass
@@ -88,6 +82,21 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
             include_ignored=filters.include_ignored,
         )
         totals = cash_flow_totals(included)
+        transfer_included = included_transactions(
+            state.transactions,
+            period=filters.period,
+            owner=owner_value,
+            currency=currency_value,
+            include_inflows=True,
+            include_ignored=filters.include_ignored,
+            include_transfers=True,
+        )
+        transfer_rows_raw = transfer_summary(transfer_included)
+        transfer_inflow = sum(row.transfer_inflow for row in transfer_rows_raw)
+        transfer_outflow = sum(row.transfer_outflow for row in transfer_rows_raw)
+        transfer_net = sum(row.net_movement for row in transfer_rows_raw)
+        transfer_absolute = sum(row.absolute_movement for row in transfer_rows_raw)
+        transfer_count = sum(row.count for row in transfer_rows_raw)
 
         with ui.column().classes("w-full gap-4"):
             with ui.card().classes("w-full"):
@@ -128,9 +137,46 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         currency=currency_value,
                         include_inflows=filters.include_inflows,
                         include_ignored=filters.include_ignored,
-                        include_transfers=filters.show_transfers,
                     )
                     ui.plotly(figure).classes("w-full h-[560px]")
+                    if filters.show_transfers or transfer_count:
+                        with ui.card().classes("w-full mt-4"):
+                            ui.label("Internal transfer monitor").classes("text-lg font-bold")
+                            ui.label("Internal transfers are excluded from household inflow/outflow totals. They are shown here only for monitoring movements between own accounts or pools.").classes("text-sm text-gray-600")
+                            with ui.row().classes("gap-4"):
+                                for label, value in (
+                                    ("Transfer inflow", transfer_inflow),
+                                    ("Transfer outflow", transfer_outflow),
+                                    ("Net transfer movement", transfer_net),
+                                    ("Absolute transfer movement", transfer_absolute),
+                                ):
+                                    with ui.card().classes("min-w-40"):
+                                        ui.label(label).classes("text-sm text-gray-500")
+                                        ui.label(f"{value:.2f}").classes("text-xl font-bold")
+                                with ui.card().classes("min-w-40"):
+                                    ui.label("Transfer count").classes("text-sm text-gray-500")
+                                    ui.label(str(transfer_count)).classes("text-xl font-bold")
+                            transfer_rows = [
+                                {
+                                    "category": row.category,
+                                    "owner": row.owner,
+                                    "count": row.count,
+                                    "transfer_inflow": f"{row.transfer_inflow:.2f}",
+                                    "transfer_outflow": f"{row.transfer_outflow:.2f}",
+                                    "net_movement": f"{row.net_movement:.2f}",
+                                    "absolute_movement": f"{row.absolute_movement:.2f}",
+                                }
+                                for row in transfer_rows_raw
+                            ]
+                            ui.table(columns=[
+                                {"name": "category", "label": "Category", "field": "category", "align": "left"},
+                                {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
+                                {"name": "count", "label": "Count", "field": "count", "align": "right"},
+                                {"name": "transfer_inflow", "label": "Transfer inflow", "field": "transfer_inflow", "align": "right"},
+                                {"name": "transfer_outflow", "label": "Transfer outflow", "field": "transfer_outflow", "align": "right"},
+                                {"name": "net_movement", "label": "Net movement", "field": "net_movement", "align": "right"},
+                                {"name": "absolute_movement", "label": "Absolute movement", "field": "absolute_movement", "align": "right"},
+                            ], rows=transfer_rows).classes("w-full")
                 with ui.tab_panel(yearly_tab):
                     selected_year = filters.period.year or years[-1]
                     ui.label(f"Yearly overview for {selected_year}").classes("font-bold")
@@ -144,6 +190,7 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                             "deficit": f"{row.deficit:.2f}",
                             "transfer_count": row.transfer_count,
                             "transfer_absolute_movement": f"{row.transfer_absolute_movement:.2f}",
+                            "transfer_net_movement": f"{row.transfer_net_movement:.2f}",
                         }
                         for row in yearly_overview(state.transactions, selected_year, currency=currency_value, include_ignored=filters.include_ignored)
                     ]
@@ -156,6 +203,7 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         {"name": "deficit", "label": "Deficit", "field": "deficit", "align": "right"},
                         {"name": "transfer_count", "label": "Transfer count", "field": "transfer_count", "align": "right"},
                         {"name": "transfer_absolute_movement", "label": "Transfer movement", "field": "transfer_absolute_movement", "align": "right"},
+                        {"name": "transfer_net_movement", "label": "Transfer net", "field": "transfer_net_movement", "align": "right"},
                     ], rows=rows).classes("w-full")
                 with ui.tab_panel(category_tab):
                     selected_year = filters.period.year or years[-1]
@@ -174,26 +222,6 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         {"name": "total_amount", "label": "Total amount", "field": "total_amount", "align": "right"},
                         {"name": "share", "label": "Share of yearly flow", "field": "share", "align": "right"},
                     ], rows=rows).classes("w-full")
-                    transfer_rows = [
-                        {
-                            "category": row.category,
-                            "owner": row.owner,
-                            "count": row.count,
-                            "net_amount": f"{row.net_amount:.2f}",
-                            "absolute_movement": f"{row.absolute_movement:.2f}",
-                        }
-                        for row in transfer_summary(included_transactions(state.transactions, period=filters.period, owner=owner_value, currency=currency_value, include_inflows=True, include_ignored=filters.include_ignored, include_transfers=True))
-                    ]
-                    if transfer_rows:
-                        ui.label("Internal transfer summary").classes("font-bold mt-4")
-                        ui.label("Transfers are neutral by default and excluded from household inflow/outflow totals.").classes("text-sm text-gray-600")
-                        ui.table(columns=[
-                            {"name": "category", "label": "Category", "field": "category", "align": "left"},
-                            {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
-                            {"name": "count", "label": "Count", "field": "count", "align": "right"},
-                            {"name": "net_amount", "label": "Net amount", "field": "net_amount", "align": "right"},
-                            {"name": "absolute_movement", "label": "Absolute movement", "field": "absolute_movement", "align": "right"},
-                        ], rows=transfer_rows).classes("w-full")
 
 
             with ui.expansion("Category colour editor", icon="palette").classes("w-full"):
@@ -206,8 +234,23 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         filters.selected_colour_category = categories[0]
                     styles = state.category_style_map()
                     saved_colour = styles.get(filters.selected_colour_category).colour if filters.selected_colour_category in styles else None
-                    preview_colour = filters.selected_colour or saved_colour or DEFAULT_NODE_COLOUR
-                    ui.select(categories, label="Category", value=filters.selected_colour_category, on_change=lambda event: (setattr(filters, "selected_colour_category", event.value), setattr(filters, "selected_colour", styles.get(event.value).colour if event.value in styles else DEFAULT_PALETTE[0]), content.refresh())).classes("w-72")
+                    fallback_colour = category_colour(filters.selected_colour_category, styles)
+                    preview_colour = filters.selected_colour if is_valid_hex_colour(filters.selected_colour) else saved_colour or fallback_colour
+
+                    def select_category(event) -> None:
+                        setattr(filters, "selected_colour_category", event.value)
+                        new_saved = styles.get(event.value).colour if event.value in styles else None
+                        setattr(filters, "selected_colour", new_saved or category_colour(event.value, styles))
+                        content.refresh()
+
+                    def save_colour() -> None:
+                        if not is_valid_hex_colour(filters.selected_colour):
+                            ui.notify("Enter a valid custom colour in #RRGGBB format before saving.", color="negative")
+                            return
+                        on_state_change(get_state().set_category_colour(filters.selected_colour_category or categories[0], filters.selected_colour))
+                        ui.notify("Colour saved.")
+
+                    ui.select(categories, label="Category", value=filters.selected_colour_category, on_change=select_category).classes("w-72")
                     with ui.row().classes("items-center gap-3"):
                         ui.label("Current colour:")
                         ui.label(" ").style(f"background-color:{preview_colour}; width:64px; height:36px; border-radius:8px; border:2px solid #374151;")
@@ -223,15 +266,16 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                             chip = ui.button("✓" if selected else "", on_click=lambda _, c=colour: (setattr(filters, "selected_colour", c), content.refresh()))
                             chip.props(f'aria-label="{colour}" title="{colour}"')
                             chip.style(
-                                f"background-color:{colour}; color:white; width:32px; height:32px; min-width:32px; "
-                                f"border-radius:6px; border:{'3px solid #111827' if selected else '1px solid #d1d5db'};"
+                                f"background-color: {colour}; color: white; width: 34px; height: 34px; min-width: 34px; "
+                                f"border-radius: 8px; border: {'3px solid #111827' if selected else '2px solid #ffffff'}; "
+                                "box-shadow: 0 1px 4px rgba(0,0,0,0.25);"
                             )
                     with ui.expansion("Advanced custom hex"):
-                        colour_input = ui.input("Custom hex colour", value=filters.selected_colour, on_change=lambda event: setattr(filters, "selected_colour", event.value)).classes("w-40")
+                        ui.input("Custom hex colour", value=filters.selected_colour, on_change=lambda event: setattr(filters, "selected_colour", event.value), placeholder="#RRGGBB").classes("w-40")
                         ui.color_input("Native colour picker", value=preview_colour, on_change=lambda event: (setattr(filters, "selected_colour", event.value), content.refresh())).classes("w-40")
                     with ui.row():
-                        ui.button("Save colour", color="primary", on_click=lambda: (on_state_change(get_state().set_category_colour(filters.selected_colour_category or categories[0], filters.selected_colour)), ui.notify("Colour saved.")))
-                        ui.button("Reset to automatic", on_click=lambda: (on_state_change(get_state().set_category_colour(filters.selected_colour_category or categories[0], None)), setattr(filters, "selected_colour", DEFAULT_PALETTE[0]), ui.notify("Colour reset.")))
+                        ui.button("Save colour", color="primary", on_click=save_colour)
+                        ui.button("Reset to automatic", on_click=lambda: (on_state_change(get_state().set_category_colour(filters.selected_colour_category or categories[0], None)), setattr(filters, "selected_colour", category_colour(filters.selected_colour_category or categories[0], get_state().category_style_map())), ui.notify("Colour reset.")))
 
     content()
     return content.refresh
