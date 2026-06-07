@@ -24,7 +24,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "e0487cb0c7440acb",
@@ -40,7 +42,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "ab022b9a16ca7484",
@@ -56,7 +60,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "995b2119e1f57c99",
@@ -72,7 +78,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "44d8499b8de69e5f",
@@ -88,7 +96,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "81fdf22a457aa62f",
@@ -104,7 +114,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "5051b0a2f4477ab5",
@@ -120,7 +132,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "0d07eb9a37c8dbac",
@@ -136,7 +150,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "3d9c9ef8a4ec517c",
@@ -152,7 +168,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "8ca3ba97f48391aa",
@@ -168,7 +186,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "7e7004a8413ae934",
@@ -184,7 +204,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "cb0937797ff9d9a0",
@@ -200,7 +222,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "56d5580d22d628a6",
@@ -216,7 +240,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "d8b029a52d50abe1",
@@ -232,7 +258,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "b919d90f18b44357",
@@ -248,7 +276,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "e7fa043a71697247",
@@ -264,7 +294,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "93f1721718414877",
@@ -280,7 +312,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "dad997c0131d1eb4",
@@ -296,7 +330,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "1b5d485ee5819a70",
@@ -312,7 +348,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "b554885a7b07f54f",
@@ -328,7 +366,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "transfer_group_id": null,
+      "transfer_note": null
     }
   ],
   "rules": [

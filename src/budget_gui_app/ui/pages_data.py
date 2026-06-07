@@ -269,6 +269,17 @@ def build_data_page(holder: UiState) -> None:
 
             rule_type.on_value_change(update_manual_category_options)
             owner_select, owner_new = select_or_new("Owner", catalog.owners, transaction.owner if transaction else "Shared")
+            transfer_group = ui.input("Transfer group", value=transaction.transfer_group_id if transaction else "", placeholder="e.g. cc-settlement-2026-05").classes("w-full")
+            transfer_note = ui.input("Transfer note", value=transaction.transfer_note if transaction else "", placeholder="e.g. Flo to shared account").classes("w-full")
+            transfer_group.visible = initial_flow == "transfer"
+            transfer_note.visible = initial_flow == "transfer"
+
+            def update_transfer_fields(event) -> None:
+                is_transfer = event.value == "transfer"
+                transfer_group.set_visibility(is_transfer)
+                transfer_note.set_visibility(is_transfer)
+
+            rule_type.on_value_change(update_transfer_fields)
 
             def save_manual() -> None:
                 kwargs = dict(
@@ -280,6 +291,8 @@ def build_data_page(holder: UiState) -> None:
                     account=selected_value(account_select, account_new),
                     category=selected_value(category_select, category_new),
                     owner=selected_value(owner_select, owner_new),
+                    transfer_group_id=(transfer_group.value or None) if rule_type.value == "transfer" else None,
+                    transfer_note=(transfer_note.value or None) if rule_type.value == "transfer" else None,
                 )
                 set_state(holder.state.update_manual_transaction(transaction.id, **kwargs) if transaction else holder.state.add_manual_transaction(**kwargs))
                 dialog.close()
@@ -309,6 +322,17 @@ def build_data_page(holder: UiState) -> None:
 
             rule_type.on_value_change(update_category_options)
             owner_select, owner_new = select_or_new("Owner", catalog.owners, transaction.owner)
+            transfer_group = ui.input("Transfer group", value=transaction.transfer_group_id or "", placeholder="e.g. cc-settlement-2026-05").classes("w-full")
+            transfer_note = ui.input("Transfer note", value=transaction.transfer_note or "", placeholder="e.g. Flo to shared account").classes("w-full")
+            transfer_group.visible = initial_flow == "transfer"
+            transfer_note.visible = initial_flow == "transfer"
+
+            def update_transfer_fields(event) -> None:
+                is_transfer = event.value == "transfer"
+                transfer_group.set_visibility(is_transfer)
+                transfer_note.set_visibility(is_transfer)
+
+            rule_type.on_value_change(update_transfer_fields)
             ignored = ui.switch("Ignored", value=transaction.ignored)
 
             def save_entry() -> None:
@@ -324,6 +348,8 @@ def build_data_page(holder: UiState) -> None:
                         category=selected_value(category_select, category_new),
                         owner=selected_value(owner_select, owner_new),
                         ignored=bool(ignored.value),
+                        transfer_group_id=(transfer_group.value or None) if rule_type.value == "transfer" else None,
+                        transfer_note=(transfer_note.value or None) if rule_type.value == "transfer" else None,
                     )
                 )
                 dialog.close()
@@ -432,6 +458,8 @@ def build_data_page(holder: UiState) -> None:
                         "category": tx.category or "",
                         "owner": tx.owner or "",
                         "assignment_source": tx.assignment_source or "",
+                        "transfer_group": (tx.transfer_group_id or "") if tx.flow_type == "transfer" else "",
+                        "transfer_note": (tx.transfer_note or "") if tx.flow_type == "transfer" else "",
                         "ignored": "yes" if tx.ignored else "no",
                         "actions": "",
                     }
@@ -451,6 +479,8 @@ def build_data_page(holder: UiState) -> None:
                             {"name": "category", "label": "Category", "field": "category", "align": "left"},
                             {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
                             {"name": "assignment_source", "label": "Assign", "field": "assignment_source"},
+                            {"name": "transfer_group", "label": "Transfer group", "field": "transfer_group", "align": "left"},
+                            {"name": "transfer_note", "label": "Transfer note", "field": "transfer_note", "align": "left"},
                             {"name": "ignored", "label": "Ignored", "field": "ignored"},
                             {"name": "actions", "label": "Actions", "field": "actions"},
                         ],
@@ -487,6 +517,7 @@ def build_data_page(holder: UiState) -> None:
                     "currency": tx.currency,
                     "category": tx.category or "",
                     "owner": tx.owner or "",
+                    "transfer_group": (tx.transfer_group_id or "") if tx.flow_type == "transfer" else "",
                     "actions": "",
                 }
                 for tx in holder.state.transactions
@@ -502,6 +533,7 @@ def build_data_page(holder: UiState) -> None:
                         {"name": "currency", "label": "Currency", "field": "currency"},
                         {"name": "category", "label": "Category", "field": "category", "align": "left"},
                         {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
+                        {"name": "transfer_group", "label": "Transfer group", "field": "transfer_group", "align": "left"},
                         {"name": "actions", "label": "Actions", "field": "actions"},
                     ],
                     rows=manual_rows,

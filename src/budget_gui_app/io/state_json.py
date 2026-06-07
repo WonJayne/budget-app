@@ -117,6 +117,8 @@ class StateJsonRepository:
             "source_kind": tx.source_kind,
             "entry_source": tx.entry_source,
             "edited": tx.edited,
+            "transfer_group_id": tx.transfer_group_id,
+            "transfer_note": tx.transfer_note,
         }
 
     def _rule_to_dict(self, rule: Rule) -> dict[str, Any]:
@@ -181,6 +183,8 @@ class StateJsonRepository:
                     source_kind=source_kind,
                     entry_source=entry_source,
                     edited=bool(item.get("edited", False)),
+                    transfer_group_id=item.get("transfer_group_id"),
+                    transfer_note=item.get("transfer_note"),
                 )
             )
         return tuple(transactions)

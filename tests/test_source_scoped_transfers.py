@@ -146,12 +146,12 @@ def test_transfer_summary_computes_transfer_monitor_values() -> None:
 
     summary = transfer_summary(rows)
 
-    assert summary[0].category == "Credit card settlement"
-    assert summary[0].count == 2
-    assert summary[0].transfer_inflow == 1500
-    assert summary[0].transfer_outflow == 1200
-    assert summary[0].net_movement == 300
-    assert summary[0].absolute_movement == 2700
+    assert {row.category for row in summary} == {"Credit card settlement"}
+    assert [row.count for row in summary] == [1, 1]
+    assert sum(row.transfer_inflow for row in summary) == 1500
+    assert sum(row.transfer_outflow for row in summary) == 1200
+    assert sum(row.net_movement for row in summary) == 300
+    assert sum(row.absolute_movement for row in summary) == 2700
 
 
 def test_showing_transfers_does_not_add_them_to_main_sankey() -> None:
