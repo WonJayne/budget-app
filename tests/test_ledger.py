@@ -88,3 +88,19 @@ def test_deleting_transaction_removes_it_from_state() -> None:
     state = state.delete_transaction("delete")
 
     assert [row.id for row in state.transactions] == ["keep"]
+
+
+def test_ledger_flow_filter_can_select_transfer_direction() -> None:
+    rows = (
+        Transaction(**{**csv_tx("in", date(2026, 5, 1), amount=100).__dict__, "cash_flow_type": "transfer"}),
+        Transaction(**{**csv_tx("out", date(2026, 5, 2), amount=-100).__dict__, "cash_flow_type": "transfer"}),
+        csv_tx("ordinary", date(2026, 5, 3), amount=-10),
+    )
+
+    transfer_in = filter_ledger_transactions(rows, LedgerFilters(period=PeriodFilter("month", 2026, 5), flow_type="transfer_in"))
+    transfer_out = filter_ledger_transactions(rows, LedgerFilters(period=PeriodFilter("month", 2026, 5), flow_type="transfer_out"))
+    any_transfer = filter_ledger_transactions(rows, LedgerFilters(period=PeriodFilter("month", 2026, 5), flow_type="transfer_any"))
+
+    assert [row.id for row in transfer_in] == ["in"]
+    assert [row.id for row in transfer_out] == ["out"]
+    assert {row.id for row in any_transfer} == {"in", "out"}

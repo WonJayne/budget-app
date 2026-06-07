@@ -22,6 +22,52 @@ from ..io.transactions_csv import transactions_to_csv
 
 OTHER_OPTION = "Other / new..."
 
+FLOW_TYPE_CHOICES = {
+    "inflow": "Inflow",
+    "outflow": "Outflow",
+    "transfer_in": "Internal transfer in",
+    "transfer_out": "Internal transfer out",
+}
+RULE_APPLICABILITY_CHOICES = {
+    "inflow": "Inflow",
+    "outflow": "Outflow",
+    "transfer_any": "Any internal transfer",
+    "transfer_in": "Internal transfer in",
+    "transfer_out": "Internal transfer out",
+}
+LEDGER_FLOW_FILTER_CHOICES = {"all": "All", **FLOW_TYPE_CHOICES, "transfer_any": "Any internal transfer"}
+
+
+def flow_selection_for_transaction(transaction: Transaction) -> str:
+    if transaction.flow_type == "transfer":
+        return "transfer_out" if transaction.amount < 0 else "transfer_in"
+    return transaction.flow_type or "outflow"
+
+
+def flow_type_from_selection(selection: str) -> FlowType:
+    return "transfer" if selection in ("transfer_in", "transfer_out", "transfer_any") else selection  # type: ignore[return-value]
+
+
+def signed_amount_from_flow_selection(selection: str, amount: float) -> float:
+    absolute_amount = abs(amount)
+    return -absolute_amount if selection in ("outflow", "transfer_out") else absolute_amount
+
+
+def rule_applicability_for_rule(rule: Rule) -> str:
+    if rule.rule_type == "transfer":
+        return {"in": "transfer_in", "out": "transfer_out"}.get(rule.transfer_sign_scope, "transfer_any")
+    return rule.rule_type
+
+
+def rule_applicability_to_model(selection: str) -> tuple[FlowType, str]:
+    if selection == "transfer_in":
+        return "transfer", "in"
+    if selection == "transfer_out":
+        return "transfer", "out"
+    if selection == "transfer_any":
+        return "transfer", "any"
+    return flow_type_from_selection(selection), "any"
+
 
 @dataclass
 class UiState:
@@ -66,7 +112,7 @@ def flow_label(transaction: Transaction) -> str:
             return "Internal transfer in"
         if transaction.transfer_direction == "out":
             return "Internal transfer out"
-        return "Internal transfer"
+        return "Internal transfer in"
     if transaction.flow_type == "inflow":
         return "Inflow"
     if transaction.flow_type == "outflow":
@@ -75,11 +121,11 @@ def flow_label(transaction: Transaction) -> str:
 
 
 def rule_type_label(rule_type: FlowType) -> str:
-    return {"inflow": "Inflow", "outflow": "Outflow", "transfer": "Internal transfer"}[rule_type]
+    return {"inflow": "Inflow", "outflow": "Outflow", "transfer": "Any internal transfer"}[rule_type]
 
 
-def transfer_sign_scope_label(scope: str) -> str:
-    return {"any": "any", "in": "transfer in only", "out": "transfer out only"}.get(scope, "any")
+def rule_applicability_label(rule: Rule) -> str:
+    return RULE_APPLICABILITY_CHOICES[rule_applicability_for_rule(rule)]
 
 
 def select_or_new(label: str, options: tuple[str, ...] | list[str], value: str | None = None):
@@ -192,8 +238,7 @@ def build_data_page(holder: UiState) -> None:
 
     def save_rule(rule_id: str | None, pattern_input, rule_type_input, category_select, category_new, owner_select, owner_new, priority_input, dialog, source_select=None, source_new=None, transfer_sign_scope_input=None) -> None:
         priority = int(priority_input.value or 0)
-        rule_type: FlowType = rule_type_input.value
-        transfer_sign_scope = transfer_sign_scope_input.value if rule_type == "transfer" and transfer_sign_scope_input is not None else "any"
+        rule_type, transfer_sign_scope = rule_applicability_to_model(rule_type_input.value)
         category = selected_value(category_select, category_new)
         owner = selected_value(owner_select, owner_new)
         rule = Rule(
@@ -213,17 +258,16 @@ def build_data_page(holder: UiState) -> None:
     def rule_dialog(rule: Rule | None = None, default_rule_type: FlowType = "outflow") -> None:
         catalog = holder.state.option_catalog()
         initial_type = rule.rule_type if rule else default_rule_type
+        initial_applicability = rule_applicability_for_rule(rule) if rule else ("transfer_any" if default_rule_type == "transfer" else default_rule_type)
         with ui.dialog() as dialog, ui.card().classes("w-96"):
-            ui.label("Edit rule" if rule else f"Add {initial_type} rule").classes("text-lg font-bold")
+            ui.label("Edit rule" if rule else f"Add {rule_type_label(initial_type)} rule").classes("text-lg font-bold")
             pattern = ui.input("Pattern", value=rule.pattern if rule else "").props("autofocus").classes("w-full")
-            rule_type = ui.select({"inflow": "Inflow", "outflow": "Outflow", "transfer": "Internal transfer"}, label="Rule type", value=initial_type).classes("w-full")
+            rule_type = ui.select(RULE_APPLICABILITY_CHOICES, label="Applies to", value=initial_applicability).classes("w-full")
             category_select, category_new = select_or_new("Category", category_options(initial_type), rule.category if rule else None)
-            transfer_sign_scope = ui.select({"any": "any", "in": "transfer in only", "out": "transfer out only"}, label="Transfer sign scope", value=rule.transfer_sign_scope if rule else "any").classes("w-full")
-            transfer_sign_scope.visible = initial_type == "transfer"
+            transfer_sign_scope = None
 
             def update_rule_category_options(event) -> None:
-                category_select.set_options(list(category_options(event.value)) + [OTHER_OPTION])
-                transfer_sign_scope.set_visibility(event.value == "transfer")
+                category_select.set_options(list(category_options(flow_type_from_selection(event.value))) + [OTHER_OPTION])
 
             rule_type.on_value_change(update_rule_category_options)
             owner_select, owner_new = select_or_new("Owner", catalog.owners, rule.owner if rule else None)
@@ -241,15 +285,35 @@ def build_data_page(holder: UiState) -> None:
     def assign_dialog(transaction_id: str) -> None:
         transaction = next(tx for tx in holder.state.transactions if tx.id == transaction_id)
         tx_flow = transaction.flow_type or "outflow"
+        initial_selection = flow_selection_for_transaction(transaction)
         catalog = holder.state.option_catalog()
         with ui.dialog() as dialog, ui.card().classes("w-96"):
             ui.label(f"{flow_label(transaction)}: {transaction.description}").classes("font-bold")
-            flow_type = ui.select({"inflow": "Inflow", "outflow": "Outflow", "transfer": "Internal transfer"}, label="Flow type", value=tx_flow).classes("w-full")
+            flow_type = ui.select(FLOW_TYPE_CHOICES, label="Flow type", value=initial_selection).classes("w-full")
+            amount = ui.number("Amount (absolute; flow type sets direction)", value=abs(transaction.amount), format="%.2f").classes("w-full")
             category_select, category_new = select_or_new("Category", category_options(tx_flow), transaction.category)
+            def update_assign_category_options(event) -> None:
+                category_select.set_options(list(category_options(flow_type_from_selection(event.value))) + [OTHER_OPTION])
+            flow_type.on_value_change(update_assign_category_options)
             owner_select, owner_new = select_or_new("Owner", catalog.owners, transaction.owner)
+            def save_assignment() -> None:
+                set_state(holder.state.update_transaction(
+                    transaction.id,
+                    flow_type=flow_type_from_selection(flow_type.value),
+                    tx_date=transaction.date,
+                    description=transaction.description,
+                    amount=signed_amount_from_flow_selection(flow_type.value, float(amount.value or 0)),
+                    currency=transaction.currency,
+                    account=transaction.account,
+                    category=selected_value(category_select, category_new),
+                    owner=selected_value(owner_select, owner_new),
+                    ignored=transaction.ignored,
+                ))
+                dialog.close()
+                ui.notify("Transaction assigned.")
             with ui.row():
                 ui.button("Cancel", on_click=dialog.close)
-                ui.button("Assign", on_click=lambda: (set_state(holder.state.manually_assign_transaction(transaction.id, selected_value(category_select, category_new), selected_value(owner_select, owner_new), flow_type.value)), dialog.close(), ui.notify("Transaction assigned.")))
+                ui.button("Assign", on_click=save_assignment)
         dialog.open()
 
     def create_rule_dialog(transaction_id: str) -> None:
@@ -257,13 +321,15 @@ def build_data_page(holder: UiState) -> None:
         tx_flow = transaction.flow_type or "outflow"
         catalog = holder.state.option_catalog()
         with ui.dialog() as dialog, ui.card().classes("w-96"):
-            ui.label(f"Create {rule_type_label(tx_flow)} rule for: {transaction.description}").classes("font-bold")
+            ui.label(f"Create {flow_label(transaction)} rule for: {transaction.description}").classes("font-bold")
             pattern = ui.input("Pattern", value=suggested_pattern(transaction.description)).classes("w-full")
-            rule_type = ui.select({"inflow": "Inflow", "outflow": "Outflow", "transfer": "Internal transfer"}, label="Rule type", value=tx_flow).classes("w-full")
+            initial_applicability = flow_selection_for_transaction(transaction) if tx_flow == "transfer" else tx_flow
+            rule_type = ui.select(RULE_APPLICABILITY_CHOICES, label="Applies to", value=initial_applicability).classes("w-full")
             category_select, category_new = select_or_new("Category", category_options(tx_flow), transaction.category)
-            transfer_sign_scope = ui.select({"any": "any", "in": "transfer in only", "out": "transfer out only"}, label="Transfer sign scope", value=transaction.transfer_direction or "any").classes("w-full")
-            transfer_sign_scope.visible = tx_flow == "transfer"
-            rule_type.on_value_change(lambda event: transfer_sign_scope.set_visibility(event.value == "transfer"))
+            transfer_sign_scope = None
+            def update_create_rule_category_options(event) -> None:
+                category_select.set_options(list(category_options(flow_type_from_selection(event.value))) + [OTHER_OPTION])
+            rule_type.on_value_change(update_create_rule_category_options)
             owner_select, owner_new = select_or_new("Owner", catalog.owners, transaction.owner)
             source_initial = transaction.stable_import_source or "Any"
             source_select = ui.select(list(source_options()), label="Source", value=source_initial if source_initial in source_options() else OTHER_OPTION).classes("w-full")
@@ -279,46 +345,46 @@ def build_data_page(holder: UiState) -> None:
     def manual_entry_dialog(flow_type: FlowType, transaction: Transaction | None = None) -> None:
         catalog = holder.state.option_catalog()
         initial_flow = transaction.flow_type if transaction else flow_type
+        initial_selection = flow_selection_for_transaction(transaction) if transaction else ("transfer_out" if flow_type == "transfer" else flow_type)
         initial_date = transaction.date if transaction else ((filters.period and filters.period.year and filters.period.month and date(filters.period.year, filters.period.month, 1)) or date.today())
         with ui.dialog() as dialog, ui.card().classes("w-96"):
-            ui.label(("Edit" if transaction else "Add") + f" {rule_type_label(initial_flow)}").classes("text-lg font-bold")
-            rule_type = ui.select({"inflow": "Inflow", "outflow": "Outflow", "transfer": "Internal transfer"}, label="Flow type", value=initial_flow).classes("w-full")
+            ui.label(("Edit" if transaction else "Add") + f" {FLOW_TYPE_CHOICES[initial_selection]}").classes("text-lg font-bold")
+            rule_type = ui.select(FLOW_TYPE_CHOICES, label="Flow type", value=initial_selection).classes("w-full")
             tx_date = ui.input("Date", value=initial_date.isoformat()).props("type=date").classes("w-full")
             description = ui.input("Description", value=transaction.description if transaction else "Manual entry").classes("w-full")
-            amount = ui.number("Amount (positive for inflow/outflow; sign preserved for transfer)", value=transaction.amount if transaction and transaction.flow_type == "transfer" else abs(transaction.amount) if transaction else 0.0, format="%.2f").classes("w-full")
+            amount = ui.number("Amount (absolute; flow type sets direction)", value=abs(transaction.amount) if transaction else 0.0, format="%.2f").classes("w-full")
             currency_select, currency_new = select_or_new("Currency", catalog.currencies, transaction.currency if transaction else DEFAULT_CURRENCY)
             account_select, account_new = select_or_new("Account/source", catalog.accounts, transaction.account if transaction else DEFAULT_ACCOUNT)
             category_select, category_new = select_or_new("Category", category_options(initial_flow), transaction.category if transaction else None)
 
             def update_manual_category_options(event) -> None:
-                category_select.set_options(list(category_options(event.value)) + [OTHER_OPTION])
+                category_select.set_options(list(category_options(flow_type_from_selection(event.value))) + [OTHER_OPTION])
 
             rule_type.on_value_change(update_manual_category_options)
             owner_select, owner_new = select_or_new("Owner", catalog.owners, transaction.owner if transaction else "Shared")
-            transfer_group = ui.input("Transfer group", value=transaction.transfer_group_id if transaction else "", placeholder="e.g. cc-settlement-2026-05").classes("w-full")
-            transfer_note = ui.input("Transfer note", value=transaction.transfer_note if transaction else "", placeholder="e.g. Flo to shared account").classes("w-full")
-            transfer_group.visible = initial_flow == "transfer"
-            transfer_note.visible = initial_flow == "transfer"
+            with ui.expansion("Advanced transfer matching", icon="link").classes("w-full") as transfer_advanced:
+                transfer_group = ui.input("Transfer group", value=transaction.transfer_group_id if transaction else "", placeholder="e.g. cc-settlement-2026-05").classes("w-full")
+                transfer_note = ui.input("Transfer note", value=transaction.transfer_note if transaction else "", placeholder="e.g. Flo to shared account").classes("w-full")
+            transfer_advanced.visible = initial_flow == "transfer"
 
             def update_transfer_fields(event) -> None:
-                is_transfer = event.value == "transfer"
-                transfer_group.set_visibility(is_transfer)
-                transfer_note.set_visibility(is_transfer)
+                is_transfer = flow_type_from_selection(event.value) == "transfer"
+                transfer_advanced.set_visibility(is_transfer)
 
             rule_type.on_value_change(update_transfer_fields)
 
             def save_manual() -> None:
                 kwargs = dict(
-                    flow_type=rule_type.value,
+                    flow_type=flow_type_from_selection(rule_type.value),
                     tx_date=date.fromisoformat(tx_date.value),
                     description=description.value,
-                    amount=float(amount.value or 0),
+                    amount=signed_amount_from_flow_selection(rule_type.value, float(amount.value or 0)),
                     currency=selected_value(currency_select, currency_new),
                     account=selected_value(account_select, account_new),
                     category=selected_value(category_select, category_new),
                     owner=selected_value(owner_select, owner_new),
-                    transfer_group_id=(transfer_group.value or None) if rule_type.value == "transfer" else None,
-                    transfer_note=(transfer_note.value or None) if rule_type.value == "transfer" else None,
+                    transfer_group_id=(transfer_group.value or None) if flow_type_from_selection(rule_type.value) == "transfer" else None,
+                    transfer_note=(transfer_note.value or None) if flow_type_from_selection(rule_type.value) == "transfer" else None,
                 )
                 set_state(holder.state.update_manual_transaction(transaction.id, **kwargs) if transaction else holder.state.add_manual_transaction(**kwargs))
                 dialog.close()
@@ -333,30 +399,30 @@ def build_data_page(holder: UiState) -> None:
         transaction = next(tx for tx in holder.state.transactions if tx.id == transaction_id)
         catalog = holder.state.option_catalog()
         initial_flow = transaction.flow_type or "outflow"
+        initial_selection = flow_selection_for_transaction(transaction)
         with ui.dialog() as dialog, ui.card().classes("w-[30rem]"):
             ui.label(f"Edit ledger entry ({transaction_entry_source(transaction)})").classes("text-lg font-bold")
-            rule_type = ui.select({"inflow": "Inflow", "outflow": "Outflow", "transfer": "Internal transfer"}, label="Flow type", value=initial_flow).classes("w-full")
+            rule_type = ui.select(FLOW_TYPE_CHOICES, label="Flow type", value=initial_selection).classes("w-full")
             tx_date = ui.input("Date", value=transaction.date.isoformat()).props("type=date").classes("w-full")
             description = ui.input("Description", value=transaction.description).classes("w-full")
-            amount = ui.number("Amount (positive for inflow/outflow; sign preserved for transfer)", value=transaction.amount if transaction.flow_type == "transfer" else abs(transaction.amount), format="%.2f").classes("w-full")
+            amount = ui.number("Amount (absolute; flow type sets direction)", value=abs(transaction.amount), format="%.2f").classes("w-full")
             currency_select, currency_new = select_or_new("Currency", catalog.currencies, transaction.currency)
             account_select, account_new = select_or_new("Account", catalog.accounts, transaction.account)
             category_select, category_new = select_or_new("Category", category_options(initial_flow), transaction.category)
 
             def update_category_options(event) -> None:
-                category_select.set_options(list(category_options(event.value)) + [OTHER_OPTION])
+                category_select.set_options(list(category_options(flow_type_from_selection(event.value))) + [OTHER_OPTION])
 
             rule_type.on_value_change(update_category_options)
             owner_select, owner_new = select_or_new("Owner", catalog.owners, transaction.owner)
-            transfer_group = ui.input("Transfer group", value=transaction.transfer_group_id or "", placeholder="e.g. cc-settlement-2026-05").classes("w-full")
-            transfer_note = ui.input("Transfer note", value=transaction.transfer_note or "", placeholder="e.g. Flo to shared account").classes("w-full")
-            transfer_group.visible = initial_flow == "transfer"
-            transfer_note.visible = initial_flow == "transfer"
+            with ui.expansion("Advanced transfer matching", icon="link").classes("w-full") as transfer_advanced:
+                transfer_group = ui.input("Transfer group", value=transaction.transfer_group_id or "", placeholder="e.g. cc-settlement-2026-05").classes("w-full")
+                transfer_note = ui.input("Transfer note", value=transaction.transfer_note or "", placeholder="e.g. Flo to shared account").classes("w-full")
+            transfer_advanced.visible = initial_flow == "transfer"
 
             def update_transfer_fields(event) -> None:
-                is_transfer = event.value == "transfer"
-                transfer_group.set_visibility(is_transfer)
-                transfer_note.set_visibility(is_transfer)
+                is_transfer = flow_type_from_selection(event.value) == "transfer"
+                transfer_advanced.set_visibility(is_transfer)
 
             rule_type.on_value_change(update_transfer_fields)
             ignored = ui.switch("Ignored", value=transaction.ignored)
@@ -365,17 +431,17 @@ def build_data_page(holder: UiState) -> None:
                 set_state(
                     holder.state.update_transaction(
                         transaction.id,
-                        flow_type=rule_type.value,
+                        flow_type=flow_type_from_selection(rule_type.value),
                         tx_date=date.fromisoformat(tx_date.value),
                         description=description.value,
-                        amount=float(amount.value or 0),
+                        amount=signed_amount_from_flow_selection(rule_type.value, float(amount.value or 0)),
                         currency=selected_value(currency_select, currency_new),
                         account=selected_value(account_select, account_new),
                         category=selected_value(category_select, category_new),
                         owner=selected_value(owner_select, owner_new),
                         ignored=bool(ignored.value),
-                        transfer_group_id=(transfer_group.value or None) if rule_type.value == "transfer" else None,
-                        transfer_note=(transfer_note.value or None) if rule_type.value == "transfer" else None,
+                        transfer_group_id=(transfer_group.value or None) if flow_type_from_selection(rule_type.value) == "transfer" else None,
+                        transfer_note=(transfer_note.value or None) if flow_type_from_selection(rule_type.value) == "transfer" else None,
                     )
                 )
                 dialog.close()
@@ -439,7 +505,7 @@ def build_data_page(holder: UiState) -> None:
             with ui.card().classes("w-full"):
                 with ui.row().classes("items-center gap-2"):
                     source_select = ui.select(["all", "csv", "manual"], label="Source", value=filters.source).classes("w-28")
-                    flow_select = ui.select({"all": "all", "inflow": "Inflow", "outflow": "Outflow", "transfer": "Internal transfer"}, label="Flow", value=filters.flow_type).classes("w-36")
+                    flow_select = ui.select(LEDGER_FLOW_FILTER_CHOICES, label="Flow", value=filters.flow_type).classes("w-48")
                     import_source_select = ui.select(["all"] + list(catalog.import_sources), label="Import source", value=filters.import_source if filters.import_source in ["all"] + list(catalog.import_sources) else "all").classes("w-44")
                     owner_select = ui.select(["all"] + list(catalog.owners), label="Owner", value=filters.owner if filters.owner in ["all"] + list(catalog.owners) else "all").classes("w-36")
                     category_select = ui.select(["all"] + list(all_categories), label="Category", value=filters.category if filters.category in ["all"] + list(all_categories) else "all").classes("w-40")
@@ -532,7 +598,7 @@ def build_data_page(holder: UiState) -> None:
             with ui.row():
                 ui.button("Add inflow", color="positive", on_click=lambda: manual_entry_dialog("inflow"))
                 ui.button("Add outflow", color="primary", on_click=lambda: manual_entry_dialog("outflow"))
-                ui.button("Add internal transfer", color="secondary", on_click=lambda: manual_entry_dialog("transfer"))
+                ui.button("Add internal transfer out", color="secondary", on_click=lambda: manual_entry_dialog("transfer"))
             manual_rows = [
                 {
                     "id": tx.id,
@@ -591,13 +657,12 @@ def build_data_page(holder: UiState) -> None:
                 {"name": "pattern", "label": "Pattern", "field": "pattern", "align": "left"},
                 {"name": "category", "label": "Category", "field": "category", "align": "left"},
                 {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
-                {"name": "rule_type", "label": "Rule type", "field": "rule_type"},
-                {"name": "transfer_sign_scope", "label": "Transfer sign scope", "field": "transfer_sign_scope"},
+                {"name": "rule_type", "label": "Applies to", "field": "rule_type"},
                 {"name": "source", "label": "Source", "field": "source"},
                 {"name": "priority", "label": "Priority", "field": "priority"},
                 {"name": "actions", "label": "Actions", "field": "actions"},
             ]
-            rows = [{"id": rule.id, "pattern": rule.pattern, "category": rule.category, "owner": rule.owner, "rule_type": rule_type_label(rule.rule_type), "transfer_sign_scope": transfer_sign_scope_label(rule.transfer_sign_scope) if rule.rule_type == "transfer" else "", "source": rule.import_source or "Any", "priority": rule.priority, "actions": ""} for rule in holder.state.rules]
+            rows = [{"id": rule.id, "pattern": rule.pattern, "category": rule.category, "owner": rule.owner, "rule_type": rule_applicability_label(rule), "source": rule.import_source or "Any", "priority": rule.priority, "actions": ""} for rule in holder.state.rules]
             table = ui.table(columns=columns, rows=rows, row_key="id").classes("w-full")
             table.add_slot("body-cell-actions", """
                 <q-td :props="props">
