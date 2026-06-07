@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from pathlib import Path
 from datetime import date
 from typing import Literal
 
 AssignmentSource = Literal["manual", "rule"] | None
-FlowType = Literal["inflow", "outflow"]
+FlowType = Literal["inflow", "outflow", "transfer"]
 SourceKind = Literal["imported", "manual"]
 EntrySource = Literal["csv", "manual"]
 
@@ -27,6 +28,15 @@ def _generate_id(*parts: str) -> str:
     return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()[:16]
 
 
+def import_source_default(source_file: str | None, entry_source: EntrySource = "csv") -> str | None:
+    """Return a stable logical import source for old or partially specified data."""
+    if entry_source == "manual":
+        return "Manual"
+    if source_file:
+        return Path(source_file).stem or Path(source_file).name
+    return None
+
+
 @dataclass(frozen=True)
 class Transaction:
     id: str
@@ -36,6 +46,8 @@ class Transaction:
     amount: float
     currency: str
     source_file: str | None = None
+    import_source: str | None = None
+    cash_flow_type: FlowType | None = None
     category: str | None = None
     owner: str | None = None
     assignment_source: AssignmentSource = None
@@ -43,6 +55,12 @@ class Transaction:
     source_kind: SourceKind = "imported"
     entry_source: EntrySource = "csv"
     edited: bool = False
+
+    def __post_init__(self) -> None:
+        if self.import_source is None:
+            object.__setattr__(self, "import_source", import_source_default(self.source_file, self.entry_source))
+        if self.cash_flow_type is None:
+            object.__setattr__(self, "cash_flow_type", flow_type_for_amount(self.amount))
 
     @staticmethod
     def make_id(date: date, account: str, description: str, amount: float, currency: str) -> str:
@@ -56,7 +74,11 @@ class Transaction:
 
     @property
     def flow_type(self) -> FlowType | None:
-        return flow_type_for_amount(self.amount)
+        return self.cash_flow_type or flow_type_for_amount(self.amount)
+
+    @property
+    def stable_import_source(self) -> str | None:
+        return self.import_source or import_source_default(self.source_file, self.entry_source)
 
 
 @dataclass(frozen=True)
@@ -67,13 +89,17 @@ class Rule:
     owner: str
     rule_type: FlowType = "outflow"
     priority: int = 0
+    import_source: str | None = None
 
     def matches(self, description: str) -> bool:
         return self.pattern.lower() in description.lower()
 
+    def applies_to_source(self, transaction: Transaction) -> bool:
+        return self.import_source is None or self.import_source == transaction.stable_import_source
+
     @staticmethod
-    def make_id(pattern: str, category: str, owner: str, rule_type: FlowType = "outflow", priority: int = 0, salt: str = "") -> str:
-        return _generate_id(pattern.lower(), category, owner, rule_type, str(priority), salt)
+    def make_id(pattern: str, category: str, owner: str, rule_type: FlowType = "outflow", priority: int = 0, salt: str = "", import_source: str | None = None) -> str:
+        return _generate_id(pattern.lower(), category, owner, rule_type, str(priority), import_source or "", salt)
 
 
 @dataclass(frozen=True)

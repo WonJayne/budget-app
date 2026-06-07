@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from typing import Iterable
 
-from .models import AppMetadata, AppProfile, CategoryStyle, FlowType, Rule, Transaction, flow_type_for_amount
+from .models import AppMetadata, AppProfile, CategoryStyle, FlowType, Rule, Transaction
 from .rules import RuleEngine
 
 DEFAULT_OWNERS = ("Flo", "Nina", "Shared")
@@ -14,6 +14,7 @@ DEFAULT_CURRENCY = "CHF"
 DEFAULT_ACCOUNT = "manual"
 DEFAULT_INFLOW_CATEGORIES = ("Bonus", "Gift", "Refund", "Reimbursement", "Salary")
 DEFAULT_OUTFLOW_CATEGORIES = ("Childcare", "Eating out", "Groceries", "Holidays", "Insurance", "Investments", "Rent", "Subscriptions", "Transport")
+DEFAULT_TRANSFER_CATEGORIES = ("Internal transfer", "Credit card settlement", "Savings transfer")
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class OptionCatalog:
     outflow_categories: tuple[str, ...]
     currencies: tuple[str, ...]
     accounts: tuple[str, ...]
+    import_sources: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -46,24 +48,33 @@ class AppState:
         outflow_categories: set[str] = set(DEFAULT_OUTFLOW_CATEGORIES) | set(self.profile.outflow_categories)
         currencies = {DEFAULT_CURRENCY} | set(self.profile.currencies)
         accounts = {DEFAULT_ACCOUNT} | set(self.profile.accounts)
+        import_sources = {"Manual"}
 
         for transaction in self.transactions:
             if transaction.owner:
                 owners.add(transaction.owner)
             if transaction.category:
-                if transaction.amount > 0:
+                if transaction.flow_type == "inflow":
                     inflow_categories.add(transaction.category)
-                elif transaction.amount < 0:
+                elif transaction.flow_type == "outflow":
+                    outflow_categories.add(transaction.category)
+                elif transaction.flow_type == "transfer":
                     outflow_categories.add(transaction.category)
             currencies.add(transaction.currency)
             accounts.add(transaction.account)
+            if transaction.stable_import_source:
+                import_sources.add(transaction.stable_import_source)
 
         for rule in self.rules:
             owners.add(rule.owner)
             if rule.rule_type == "inflow":
                 inflow_categories.add(rule.category)
+            elif rule.rule_type == "outflow":
+                outflow_categories.add(rule.category)
             else:
                 outflow_categories.add(rule.category)
+            if rule.import_source:
+                import_sources.add(rule.import_source)
 
         for style in self.category_styles:
             if style.category:
@@ -76,6 +87,7 @@ class AppState:
             outflow_categories=tuple(sorted(outflow_categories)),
             currencies=tuple(sorted(currencies)),
             accounts=tuple(sorted(accounts)),
+            import_sources=tuple(sorted(import_sources)),
         )
 
     def add_transactions(self, transactions: Iterable[Transaction]) -> "AppState":
@@ -98,7 +110,7 @@ class AppState:
         category: str,
         owner: str,
     ) -> "AppState":
-        signed_amount = abs(amount) if flow_type == "inflow" else -abs(amount)
+        signed_amount = amount if flow_type == "transfer" else abs(amount) if flow_type == "inflow" else -abs(amount)
         transaction = Transaction(
             id=Transaction.make_manual_id(tx_date, account, description, signed_amount, currency, str(len(self.transactions))),
             date=tx_date,
@@ -107,6 +119,8 @@ class AppState:
             amount=signed_amount,
             currency=currency,
             source_file=None,
+            import_source="Manual",
+            cash_flow_type=flow_type,
             category=category,
             owner=owner,
             assignment_source="manual",
@@ -128,7 +142,7 @@ class AppState:
         category: str,
         owner: str,
     ) -> "AppState":
-        signed_amount = abs(amount) if flow_type == "inflow" else -abs(amount)
+        signed_amount = amount if flow_type == "transfer" else abs(amount) if flow_type == "inflow" else -abs(amount)
         updated = tuple(
             replace(
                 transaction,
@@ -139,6 +153,8 @@ class AppState:
                 account=account,
                 category=category,
                 owner=owner,
+                cash_flow_type=flow_type,
+                import_source="Manual",
                 assignment_source="manual",
                 source_kind="manual",
                 entry_source="manual",
@@ -165,7 +181,7 @@ class AppState:
         ignored: bool,
     ) -> "AppState":
         """Update any transaction while preserving its stable transaction ID."""
-        signed_amount = abs(amount) if flow_type == "inflow" else -abs(amount)
+        signed_amount = amount if flow_type == "transfer" else abs(amount) if flow_type == "inflow" else -abs(amount)
         category_value = category or None
         owner_value = owner or None
         updated = tuple(
@@ -178,7 +194,8 @@ class AppState:
                 account=account,
                 category=category_value,
                 owner=owner_value,
-                assignment_source="manual" if category_value or owner_value else None,
+                cash_flow_type=flow_type,
+                assignment_source="manual" if category_value or owner_value or flow_type == "transfer" else None,
                 ignored=ignored,
                 edited=True,
             )
@@ -211,9 +228,9 @@ class AppState:
     def remove_rule(self, rule_id: str) -> "AppState":
         return replace(self, rules=tuple(rule for rule in self.rules if rule.id != rule_id)).reapply_rules()
 
-    def manually_assign_transaction(self, transaction_id: str, category: str, owner: str) -> "AppState":
+    def manually_assign_transaction(self, transaction_id: str, category: str, owner: str, flow_type: FlowType | None = None) -> "AppState":
         updated = tuple(
-            replace(transaction, category=category, owner=owner, assignment_source="manual")
+            replace(transaction, category=category, owner=owner, cash_flow_type=flow_type or transaction.flow_type, assignment_source="manual")
             if transaction.id == transaction_id
             else transaction
             for transaction in self.transactions

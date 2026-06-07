@@ -24,7 +24,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "inflow"
     },
     {
       "id": "e0487cb0c7440acb",
@@ -40,7 +42,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "inflow"
     },
     {
       "id": "ab022b9a16ca7484",
@@ -56,7 +60,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "inflow"
     },
     {
       "id": "995b2119e1f57c99",
@@ -72,7 +78,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "44d8499b8de69e5f",
@@ -88,7 +96,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "81fdf22a457aa62f",
@@ -104,7 +114,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "5051b0a2f4477ab5",
@@ -120,7 +132,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "0d07eb9a37c8dbac",
@@ -136,7 +150,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "3d9c9ef8a4ec517c",
@@ -152,7 +168,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "8ca3ba97f48391aa",
@@ -168,7 +186,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "7e7004a8413ae934",
@@ -184,7 +204,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "cb0937797ff9d9a0",
@@ -200,7 +222,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "56d5580d22d628a6",
@@ -216,7 +240,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "d8b029a52d50abe1",
@@ -232,7 +258,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "b919d90f18b44357",
@@ -248,7 +276,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "e7fa043a71697247",
@@ -264,7 +294,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "93f1721718414877",
@@ -280,7 +312,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "inflow"
     },
     {
       "id": "dad997c0131d1eb4",
@@ -296,7 +330,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "inflow"
     },
     {
       "id": "1b5d485ee5819a70",
@@ -312,7 +348,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     },
     {
       "id": "b554885a7b07f54f",
@@ -328,7 +366,9 @@
       "ignored": false,
       "source_kind": "imported",
       "entry_source": "csv",
-      "edited": false
+      "edited": false,
+      "import_source": "sample_transactions",
+      "cash_flow_type": "outflow"
     }
   ],
   "rules": [
@@ -338,7 +378,8 @@
       "category": "Salary",
       "owner": "Flo",
       "rule_type": "inflow",
-      "priority": 100
+      "priority": 100,
+      "import_source": null
     },
     {
       "id": "salary-nina",
@@ -346,7 +387,8 @@
       "category": "Salary",
       "owner": "Nina",
       "rule_type": "inflow",
-      "priority": 100
+      "priority": 100,
+      "import_source": null
     },
     {
       "id": "gift",
@@ -354,7 +396,8 @@
       "category": "Gift",
       "owner": "Shared",
       "rule_type": "inflow",
-      "priority": 50
+      "priority": 50,
+      "import_source": null
     },
     {
       "id": "migros",
@@ -362,7 +405,8 @@
       "category": "Groceries",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "coop",
@@ -370,7 +414,8 @@
       "category": "Groceries",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "sbb",
@@ -378,7 +423,8 @@
       "category": "Transport",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "swica",
@@ -386,7 +432,8 @@
       "category": "Insurance",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "etf",
@@ -394,7 +441,8 @@
       "category": "Investments",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "spotify",
@@ -402,7 +450,8 @@
       "category": "Subscriptions",
       "owner": "Flo",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "personal-care",
@@ -410,7 +459,8 @@
       "category": "Personal care",
       "owner": "Nina",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "rent",
@@ -418,7 +468,8 @@
       "category": "Housing",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "swisscom",
@@ -426,7 +477,8 @@
       "category": "Utilities",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "electricity",
@@ -434,7 +486,8 @@
       "category": "Utilities",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "restaurant",
@@ -442,7 +495,8 @@
       "category": "Eating out",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "daycare",
@@ -450,7 +504,8 @@
       "category": "Childcare",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     },
     {
       "id": "tax",
@@ -458,7 +513,8 @@
       "category": "Taxes",
       "owner": "Shared",
       "rule_type": "outflow",
-      "priority": 20
+      "priority": 20,
+      "import_source": null
     }
   ],
   "category_styles": [

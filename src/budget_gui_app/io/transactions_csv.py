@@ -20,6 +20,8 @@ CSV_COLUMNS = (
     "ignored",
     "source_kind",
     "source_file",
+    "import_source",
+    "cash_flow_type",
 )
 
 
@@ -42,6 +44,8 @@ def transactions_to_csv(transactions: tuple[Transaction, ...]) -> str:
                 "ignored": "true" if tx.ignored else "false",
                 "source_kind": tx.source_kind,
                 "source_file": tx.source_file or "",
+                "import_source": tx.stable_import_source or "",
+                "cash_flow_type": tx.flow_type or "",
             }
         )
     return output.getvalue()

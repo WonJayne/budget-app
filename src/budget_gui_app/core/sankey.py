@@ -7,7 +7,7 @@ from typing import Iterable, Mapping
 
 import plotly.graph_objects as go
 
-from .models import CategoryStyle, Transaction, flow_type_for_amount
+from .models import CategoryStyle, Transaction
 from .periods import PeriodFilter
 from .summaries import cash_flow_totals
 
@@ -31,13 +31,14 @@ class SankeyBuilder:
         period: PeriodFilter | None = None,
         include_inflows: bool | None = None,
         include_income: bool | None = None,
+        include_transfers: bool = False,
     ) -> go.Figure:
         if include_inflows is None:
             include_inflows = True if include_income is None else include_income
         filtered = [
             transaction
             for transaction in transactions
-            if self._included(transaction, include_inflows, include_ignored, month, owner, currency, period)
+            if self._included(transaction, include_inflows, include_ignored, month, owner, currency, period, include_transfers)
         ]
 
         node_index: dict[str, int] = {}
@@ -70,7 +71,7 @@ class SankeyBuilder:
             link_colours_by_pair[(source, target)] = colour or DEFAULT_LINK_COLOUR
 
         for transaction in filtered:
-            flow_type = flow_type_for_amount(transaction.amount)
+            flow_type = transaction.flow_type
             if flow_type == "inflow":
                 category = transaction.category or "Uncategorised inflow"
                 owner_name = transaction.owner or "Unassigned inflow"
@@ -84,6 +85,12 @@ class SankeyBuilder:
                 value = abs(transaction.amount)
                 add_flow(POOL_NODE, owner_node, value, share_basis="outflow", count=1)
                 add_flow(owner_node, category, value, category_colour(category), share_basis="outflow", count=1)
+            elif flow_type == "transfer" and include_transfers:
+                category = transaction.category or "Internal transfer"
+                owner_name = transaction.owner or "Unassigned transfer"
+                owner_node = f"{owner_name} transfers" if owner_name != "Unassigned transfer" else owner_name
+                add_flow(owner_node, "Internal transfers", abs(transaction.amount), share_basis="transfer", count=1)
+                add_flow("Internal transfers", category, abs(transaction.amount), category_colour(category), share_basis="transfer", count=1)
 
         totals = cash_flow_totals(filtered)
         if totals.balance > 0:
@@ -100,7 +107,7 @@ class SankeyBuilder:
             source_label = labels[pair[0]]
             target_label = labels[pair[1]]
             basis = flow_share_basis.get(pair, "flow")
-            denominator = totals.total_inflow if basis == "inflow" else totals.total_outflow if basis == "outflow" else 0.0
+            denominator = totals.total_inflow if basis == "inflow" else totals.total_outflow if basis == "outflow" else sum(value for pair2, value in flows.items() if flow_share_basis.get(pair2) == "transfer") if basis == "transfer" else 0.0
             share = value / denominator if denominator else 0.0
             customdata.append((source_label, target_label, f"CHF {value:,.2f}", f"Share of total {basis}: {share:.1%}", flow_counts.get(pair, 0)))
 
@@ -130,9 +137,12 @@ class SankeyBuilder:
         owner: str | None = None,
         currency: str | None = None,
         period: PeriodFilter | None = None,
+        include_transfers: bool = False,
     ) -> bool:
-        flow_type = flow_type_for_amount(transaction.amount)
+        flow_type = transaction.flow_type
         if flow_type is None:
+            return False
+        if flow_type == "transfer" and not include_transfers:
             return False
         if not include_ignored and transaction.ignored:
             return False

@@ -12,13 +12,14 @@ from .models import Transaction
 class TransactionImporter:
     """Import normalized CSV files with date, account, description, amount, currency."""
 
-    def import_csv(self, path: Path, account_name: str | None = None) -> tuple[Transaction, ...]:
+    def import_csv(self, path: Path, account_name: str | None = None, import_source: str | None = None) -> tuple[Transaction, ...]:
         df = pd.read_csv(path)
         required = {"date", "account", "description", "amount", "currency"}
         missing = required - set(df.columns)
         if missing:
             raise ValueError(f"CSV file {path} is missing required columns: {', '.join(sorted(missing))}")
 
+        source_label = import_source or path.stem or path.name
         transactions: list[Transaction] = []
         for _, row in df.iterrows():
             tx_date = pd.to_datetime(row["date"]).date()
@@ -35,6 +36,7 @@ class TransactionImporter:
                     amount=amount,
                     currency=currency,
                     source_file=path.name,
+                    import_source=source_label,
                 )
             )
         return tuple(transactions)

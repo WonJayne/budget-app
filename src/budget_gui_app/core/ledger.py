@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Literal
 
-from .models import FlowType, Transaction, flow_type_for_amount
+from .models import FlowType, Transaction
 from .periods import PeriodFilter
 
 LedgerSourceFilter = Literal["all", "csv", "manual"]
-LedgerFlowFilter = Literal["all", "inflow", "outflow"]
+LedgerFlowFilter = Literal["all", "inflow", "outflow", "transfer"]
 LedgerStatusFilter = Literal["all", "classified", "unclassified", "ignored"]
 
 
@@ -21,6 +21,7 @@ class LedgerFilters:
     owner: str = "all"
     category: str = "all"
     status: LedgerStatusFilter = "all"
+    import_source: str = "all"
 
 
 def transaction_entry_source(transaction: Transaction) -> Literal["csv", "manual"]:
@@ -39,7 +40,9 @@ def filter_ledger_transactions(transactions: Iterable[Transaction], filters: Led
         entry_source = transaction_entry_source(transaction)
         if filters.source != "all" and entry_source != filters.source:
             continue
-        flow_type = flow_type_for_amount(transaction.amount)
+        if filters.import_source != "all" and transaction.stable_import_source != filters.import_source:
+            continue
+        flow_type = transaction.flow_type
         if filters.flow_type != "all" and flow_type != filters.flow_type:
             continue
         if filters.owner != "all" and transaction.owner != filters.owner:

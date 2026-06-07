@@ -21,6 +21,7 @@ def demo_state() -> AppState:
         Transaction("demo-insurance-jul", date(2026, 7, 8), "demo", "Insurance", -800, "CHF", source_file="demo", category="Insurance", owner="Shared", assignment_source="manual"),
         Transaction("demo-transport-jul", date(2026, 7, 12), "demo", "Transport", -420, "CHF", source_file="demo", category="Transport", owner="Shared", assignment_source="manual"),
         Transaction("demo-invest-jul", date(2026, 7, 28), "demo", "Investments", -2500, "CHF", source_file="demo", category="Investments", owner="Shared", assignment_source="manual"),
+        Transaction("demo-transfer-jul", date(2026, 7, 29), "demo", "Credit card settlement", -1200, "CHF", source_file="demo", import_source="Demo shared account", cash_flow_type="transfer", category="Credit card settlement", owner="Shared", assignment_source="manual"),
         Transaction("demo-flo-salary-aug", date(2026, 8, 25), "demo", "Flo salary", 6500, "CHF", source_file="demo", category="Salary", owner="Flo", assignment_source="manual"),
         Transaction("demo-nina-salary-aug", date(2026, 8, 25), "demo", "Nina salary", 5200, "CHF", source_file="demo", category="Salary", owner="Nina", assignment_source="manual"),
         Transaction("demo-groceries-aug", date(2026, 8, 5), "demo", "Groceries", -1450, "CHF", source_file="demo", category="Groceries", owner="Shared", assignment_source="manual"),
@@ -51,10 +52,10 @@ def build_help_page(holder: UiState, set_state) -> None:
     with ui.column().classes("w-full gap-4"):
         ui.label("How it works").classes("text-2xl font-bold")
         ui.markdown("""
-- Import transactions CSV files or add manual inflow/outflow entries. Export a ledger CSV for spreadsheet use, a full backup JSON to stop and restart later, or a rules/profile JSON to reuse classifications and colours without changing transactions.
-- Positive amounts are **inflows**; negative amounts are **outflows**. Manual outflows can be typed as positive numbers and are stored negative.
-- Inflow rules classify positive transactions only; outflow rules classify negative transactions only. Manual assignments survive rule changes.
-- Cash flows into the **Household pool**. Extra money becomes **Potential savings**; overspending appears as **Deficit**.
+- Import transactions CSV files or add manual inflow/outflow/transfer entries. Each CSV import gets a stable **import source** label, defaulting to the uploaded filename stem, so rules can target one bank/card feed. Export a ledger CSV for spreadsheet use, a full backup JSON to stop and restart later, or a rules/profile JSON to reuse classifications and colours without changing transactions.
+- Positive amounts are **inflows**; negative amounts are **outflows**. **Internal transfers** are movements between your own accounts/pools, such as credit card settlements, savings transfers, brokerage transfers, or personal-to-shared transfers. They are neutral by default and excluded from inflow, outflow, balance, **Potential savings**, and **Deficit** totals.
+- Rules can be global with Source = **Any** or source-scoped to an observed import source. Inflow rules classify positive transactions only; outflow rules classify negative transactions only; transfer rules can classify either sign. Manual assignments survive rule changes.
+- Cash flows into the **Household pool**. Extra money becomes **Potential savings**; overspending appears as **Deficit**. Transfers can be shown separately with the internal-transfer visualisation toggle.
 - Monthly view focuses on one household budget month. Yearly view aggregates all months in the selected year.
 - Full backup import/export saves and restores transactions, rules, manual entries, ignored flags, metadata, and category colours. Rules/profile import/export contains rules and colours but no transaction data.
 """)
