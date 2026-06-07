@@ -58,6 +58,7 @@ def build_help_page(holder: UiState, set_state) -> None:
 - Cash flows into the **Household pool**. Extra money becomes **Potential savings**; overspending appears as **Deficit**. Transfers can be shown separately with the internal-transfer visualisation toggle.
 - Monthly view focuses on one household budget month. Yearly view aggregates all months in the selected year.
 - Full backup import/export saves and restores transactions, rules, manual entries, ignored flags, metadata, and category colours. Rules/profile import/export contains rules and colours but no transaction data.
+- Category colours are edited from the Visualisation page: choose a category from the dropdown, click a visible palette colour, and save. The advanced `#RRGGBB` hex input is optional and invalid custom colours are rejected.
 """)
         ui.button("Load demo data", color="primary", on_click=load_demo)
 

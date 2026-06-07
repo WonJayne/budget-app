@@ -39,8 +39,14 @@ class TransferSummaryRow:
     category: str
     owner: str
     count: int
-    net_amount: float
+    transfer_inflow: float
+    transfer_outflow: float
+    net_movement: float
     absolute_movement: float
+
+    @property
+    def net_amount(self) -> float:
+        return self.net_movement
 
 
 @dataclass(frozen=True)
@@ -51,6 +57,7 @@ class YearlyOverviewRow:
     balance: float
     transfer_count: int = 0
     transfer_absolute_movement: float = 0.0
+    transfer_net_movement: float = 0.0
 
     @property
     def potential_savings(self) -> float:
@@ -150,7 +157,9 @@ def transfer_summary(transactions: Iterable[Transaction]) -> tuple[TransferSumma
                 category=category,
                 owner=owner,
                 count=len(group),
-                net_amount=sum(transaction.amount for transaction in group),
+                transfer_inflow=sum(transaction.amount for transaction in group if transaction.amount > 0),
+                transfer_outflow=sum(abs(transaction.amount) for transaction in group if transaction.amount < 0),
+                net_movement=sum(transaction.amount for transaction in group),
                 absolute_movement=sum(abs(transaction.amount) for transaction in group),
             )
         )
@@ -188,6 +197,7 @@ def yearly_overview(transactions: Iterable[Transaction], year: int, *, currency:
                 balance=totals.balance,
                 transfer_count=len(transfer_rows),
                 transfer_absolute_movement=sum(abs(transaction.amount) for transaction in transfer_rows),
+                transfer_net_movement=sum(transaction.amount for transaction in transfer_rows),
             )
         )
     return tuple(rows)

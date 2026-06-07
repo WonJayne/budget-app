@@ -1,7 +1,7 @@
 from datetime import date
 
 from budget_gui_app.core.ledger import LedgerFilters, filter_ledger_transactions
-from budget_gui_app.core.models import CategoryStyle, Rule, Transaction
+from budget_gui_app.core.models import Rule, Transaction
 from budget_gui_app.core.periods import PeriodFilter
 from budget_gui_app.core.rules import RuleEngine
 from budget_gui_app.core.sankey import SankeyBuilder
@@ -138,24 +138,27 @@ def test_deleting_transfer_rule_removes_stale_rule_based_transfer_classification
     assert updated.transactions[0].assignment_source is None
 
 
-def test_transfer_summary_computes_net_and_absolute_movement() -> None:
+def test_transfer_summary_computes_transfer_monitor_values() -> None:
     rows = (
         Transaction(**{**tx(amount=1500.0).__dict__, "cash_flow_type": "transfer", "category": "Credit card settlement", "owner": "Shared"}),
-        Transaction(**{**tx(amount=-1500.0).__dict__, "cash_flow_type": "transfer", "category": "Credit card settlement", "owner": "Shared"}),
+        Transaction(**{**tx(amount=-1200.0).__dict__, "cash_flow_type": "transfer", "category": "Credit card settlement", "owner": "Shared"}),
     )
 
     summary = transfer_summary(rows)
 
     assert summary[0].category == "Credit card settlement"
     assert summary[0].count == 2
-    assert summary[0].net_amount == 0
-    assert summary[0].absolute_movement == 3000
+    assert summary[0].transfer_inflow == 1500
+    assert summary[0].transfer_outflow == 1200
+    assert summary[0].net_movement == 300
+    assert summary[0].absolute_movement == 2700
 
 
-def test_sankey_can_show_transfers_in_neutral_lane() -> None:
+def test_showing_transfers_does_not_add_them_to_main_sankey() -> None:
     transfer = Transaction(**{**tx(amount=-50.0).__dict__, "cash_flow_type": "transfer", "category": "Savings transfer", "owner": "Shared"})
 
-    fig = SankeyBuilder().build((transfer,), {"Savings transfer": CategoryStyle("Savings transfer", "#123456")}, include_ignored=False, include_inflows=True, include_transfers=True)
+    fig = SankeyBuilder().build((transfer,), {}, include_ignored=False, include_inflows=True, include_transfers=True)
 
-    assert "Internal transfers" in fig.data[0]["node"]["label"]
+    assert "Internal transfers" not in fig.data[0]["node"]["label"]
+    assert "Savings transfer" not in fig.data[0]["node"]["label"]
     assert "Household pool" not in fig.data[0]["node"]["label"]

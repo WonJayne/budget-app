@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..core.models import AppMetadata, AppProfile, CategoryStyle, Rule, Transaction, import_source_default
+from ..core.sankey import is_valid_hex_colour
 from ..core.state import AppState
 
 
@@ -185,24 +186,44 @@ class StateJsonRepository:
         return tuple(transactions)
 
     def _rules_from_data(self, data: dict[str, Any]) -> tuple[Rule, ...]:
-        return tuple(
-            Rule(
-                id=item["id"],
-                pattern=item["pattern"],
-                category=item["category"],
-                owner=item["owner"],
-                rule_type=item.get("rule_type", "outflow"),
-                priority=int(item.get("priority", 0)),
-                import_source=item.get("import_source"),
+        rules: list[Rule] = []
+        for item in data.get("rules", []):
+            rule_type = item.get("rule_type", "outflow")
+            if rule_type not in ("inflow", "outflow", "transfer"):
+                rule_type = "outflow"
+            rules.append(
+                Rule(
+                    id=item["id"],
+                    pattern=item["pattern"],
+                    category=item["category"],
+                    owner=item["owner"],
+                    rule_type=rule_type,
+                    priority=int(item.get("priority", 0)),
+                    import_source=item.get("import_source"),
+                )
             )
-            for item in data.get("rules", [])
-        )
+        return tuple(rules)
 
     def _category_styles_from_data(self, data: dict[str, Any]) -> tuple[CategoryStyle, ...]:
         style_items = data.get("category_styles", [])
+        styles: dict[str, CategoryStyle] = {}
         if isinstance(style_items, dict):
-            style_items = style_items.values()
-        return tuple(CategoryStyle(category=item["category"], colour=item.get("colour")) for item in style_items)
+            iterable = []
+            for category, value in style_items.items():
+                if isinstance(value, dict):
+                    iterable.append({"category": value.get("category", category), "colour": value.get("colour")})
+                else:
+                    iterable.append({"category": category, "colour": value})
+        else:
+            iterable = style_items
+        for item in iterable:
+            if not isinstance(item, dict):
+                continue
+            category = item.get("category")
+            colour = item.get("colour")
+            if category and is_valid_hex_colour(colour):
+                styles[str(category)] = CategoryStyle(category=str(category), colour=str(colour))
+        return tuple(styles[category] for category in sorted(styles))
 
 
 def save_state(state: AppState, path: Path) -> None:

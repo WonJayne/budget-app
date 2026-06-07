@@ -61,3 +61,37 @@ def test_sankey_links_include_hover_information_with_amount_and_transaction_coun
     assert "Transactions" in link["hovertemplate"]
     assert "CHF 10.00" in [item[2] for item in link["customdata"]]
     assert 1 in [item[4] for item in link["customdata"]]
+
+
+def test_sankey_fallback_colours_are_deterministic_and_valid() -> None:
+    from budget_gui_app.core.sankey import category_colour, is_valid_hex_colour
+
+    first = category_colour("Groceries", {})
+    second = category_colour("Groceries", {})
+
+    assert first == second
+    assert is_valid_hex_colour(first)
+
+
+def test_saved_category_colour_overrides_fallback() -> None:
+    from budget_gui_app.core.sankey import category_colour
+
+    assert category_colour("Groceries", {"Groceries": CategoryStyle("Groceries", "#123456")}) == "#123456"
+
+
+def test_invalid_saved_category_colour_uses_fallback() -> None:
+    from budget_gui_app.core.sankey import category_colour, is_valid_hex_colour
+
+    colour = category_colour("Groceries", {"Groceries": CategoryStyle("Groceries", "not-a-colour")})
+
+    assert colour != "not-a-colour"
+    assert is_valid_hex_colour(colour)
+
+
+def test_sankey_node_and_link_colours_are_valid_strings_without_none() -> None:
+    fig = SankeyBuilder().build((make_tx(),), {}, month=None, owner=None, currency=None, include_income=True, include_ignored=False)
+
+    assert all(isinstance(colour, str) and colour for colour in fig.data[0]["node"]["color"])
+    assert all(isinstance(colour, str) and colour for colour in fig.data[0]["link"]["color"])
+    assert None not in list(fig.data[0]["node"]["color"])
+    assert None not in list(fig.data[0]["link"]["color"])

@@ -99,3 +99,30 @@ def test_full_backup_roundtrip_restores_transactions_rules_colours_ignored_flags
     assert loaded == state
     assert loaded.transactions[0].ignored is True
     assert loaded.metadata.schema_version == 1
+
+
+def test_old_state_without_cash_flow_type_loads_from_amount_sign() -> None:
+    loaded = StateJsonRepository().from_dict(
+        {
+            "transactions": [
+                {"id": "old-in", "date": "2026-05-01", "account": "card", "description": "Old in", "amount": "10", "currency": "CHF"},
+                {"id": "old-out", "date": "2026-05-02", "account": "card", "description": "Old out", "amount": "-5", "currency": "CHF"},
+            ]
+        }
+    )
+
+    assert [transaction.flow_type for transaction in loaded.transactions] == ["inflow", "outflow"]
+
+
+def test_old_state_without_category_colours_loads_and_invalid_colours_are_ignored() -> None:
+    loaded = StateJsonRepository().from_dict(
+        {
+            "category_styles": {
+                "Groceries": {"colour": None},
+                "Rent": "not-a-colour",
+                "Salary": "#123456",
+            }
+        }
+    )
+
+    assert loaded.category_styles == (CategoryStyle("Salary", "#123456"),)
