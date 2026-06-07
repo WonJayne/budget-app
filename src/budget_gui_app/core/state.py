@@ -110,6 +110,8 @@ class AppState:
         account: str,
         category: str,
         owner: str,
+        transfer_group_id: str | None = None,
+        transfer_note: str | None = None,
     ) -> "AppState":
         signed_amount = amount if flow_type == "transfer" else abs(amount) if flow_type == "inflow" else -abs(amount)
         transaction = Transaction(
@@ -127,6 +129,8 @@ class AppState:
             assignment_source="manual",
             source_kind="manual",
             entry_source="manual",
+            transfer_group_id=transfer_group_id if flow_type == "transfer" else None,
+            transfer_note=transfer_note if flow_type == "transfer" else None,
         )
         return self.add_transactions((transaction,))
 
@@ -142,6 +146,8 @@ class AppState:
         account: str,
         category: str,
         owner: str,
+        transfer_group_id: str | None = None,
+        transfer_note: str | None = None,
     ) -> "AppState":
         signed_amount = amount if flow_type == "transfer" else abs(amount) if flow_type == "inflow" else -abs(amount)
         updated = tuple(
@@ -160,6 +166,8 @@ class AppState:
                 source_kind="manual",
                 entry_source="manual",
                 edited=True,
+                transfer_group_id=transfer_group_id if flow_type == "transfer" else None,
+                transfer_note=transfer_note if flow_type == "transfer" else None,
             )
             if transaction.id == transaction_id and transaction.source_kind == "manual"
             else transaction
@@ -180,6 +188,8 @@ class AppState:
         category: str | None,
         owner: str | None,
         ignored: bool,
+        transfer_group_id: str | None = None,
+        transfer_note: str | None = None,
     ) -> "AppState":
         """Update any transaction while preserving its stable transaction ID."""
         signed_amount = amount if flow_type == "transfer" else abs(amount) if flow_type == "inflow" else -abs(amount)
@@ -199,6 +209,8 @@ class AppState:
                 assignment_source="manual" if category_value or owner_value or flow_type == "transfer" else None,
                 ignored=ignored,
                 edited=True,
+                transfer_group_id=transfer_group_id if flow_type == "transfer" else None,
+                transfer_note=transfer_note if flow_type == "transfer" else None,
             )
             if transaction.id == transaction_id
             else transaction

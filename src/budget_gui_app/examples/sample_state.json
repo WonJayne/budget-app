@@ -26,7 +26,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "inflow"
+      "cash_flow_type": "inflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "e0487cb0c7440acb",
@@ -44,7 +46,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "inflow"
+      "cash_flow_type": "inflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "ab022b9a16ca7484",
@@ -62,7 +66,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "inflow"
+      "cash_flow_type": "inflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "995b2119e1f57c99",
@@ -80,7 +86,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "44d8499b8de69e5f",
@@ -98,7 +106,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "81fdf22a457aa62f",
@@ -116,7 +126,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "5051b0a2f4477ab5",
@@ -134,7 +146,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "0d07eb9a37c8dbac",
@@ -152,7 +166,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "3d9c9ef8a4ec517c",
@@ -170,7 +186,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "8ca3ba97f48391aa",
@@ -188,7 +206,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "7e7004a8413ae934",
@@ -206,7 +226,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "cb0937797ff9d9a0",
@@ -224,7 +246,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "56d5580d22d628a6",
@@ -242,7 +266,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "d8b029a52d50abe1",
@@ -260,7 +286,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "b919d90f18b44357",
@@ -278,7 +306,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "e7fa043a71697247",
@@ -296,7 +326,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "93f1721718414877",
@@ -314,7 +346,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "inflow"
+      "cash_flow_type": "inflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "dad997c0131d1eb4",
@@ -332,7 +366,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "inflow"
+      "cash_flow_type": "inflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "1b5d485ee5819a70",
@@ -350,7 +386,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     },
     {
       "id": "b554885a7b07f54f",
@@ -368,7 +406,9 @@
       "entry_source": "csv",
       "edited": false,
       "import_source": "sample_transactions",
-      "cash_flow_type": "outflow"
+      "cash_flow_type": "outflow",
+      "transfer_group_id": null,
+      "transfer_note": null
     }
   ],
   "rules": [

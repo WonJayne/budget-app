@@ -22,6 +22,8 @@ CSV_COLUMNS = (
     "source_file",
     "import_source",
     "cash_flow_type",
+    "transfer_group_id",
+    "transfer_note",
 )
 
 
@@ -46,6 +48,8 @@ def transactions_to_csv(transactions: tuple[Transaction, ...]) -> str:
                 "source_file": tx.source_file or "",
                 "import_source": tx.stable_import_source or "",
                 "cash_flow_type": tx.flow_type or "",
+                "transfer_group_id": tx.transfer_group_id or "",
+                "transfer_note": tx.transfer_note or "",
             }
         )
     return output.getvalue()

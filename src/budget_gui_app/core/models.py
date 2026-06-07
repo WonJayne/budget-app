@@ -55,6 +55,8 @@ class Transaction:
     source_kind: SourceKind = "imported"
     entry_source: EntrySource = "csv"
     edited: bool = False
+    transfer_group_id: str | None = None
+    transfer_note: str | None = None
 
     def __post_init__(self) -> None:
         if self.import_source is None:

@@ -11,7 +11,7 @@ from nicegui import ui
 from ..core.periods import PeriodFilter, available_years, default_period_filter
 from ..core.sankey import DEFAULT_PALETTE, SankeyBuilder, category_colour, is_valid_hex_colour
 from ..core.state import AppState
-from ..core.summaries import cash_flow_totals, included_transactions, summarize_transactions, transfer_summary, yearly_overview
+from ..core.summaries import cash_flow_totals, included_transactions, summarize_transactions, transfer_monitor_totals, transfer_summary, yearly_overview
 
 
 @dataclass
@@ -92,11 +92,8 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
             include_transfers=True,
         )
         transfer_rows_raw = transfer_summary(transfer_included)
-        transfer_inflow = sum(row.transfer_inflow for row in transfer_rows_raw)
-        transfer_outflow = sum(row.transfer_outflow for row in transfer_rows_raw)
-        transfer_net = sum(row.net_movement for row in transfer_rows_raw)
-        transfer_absolute = sum(row.absolute_movement for row in transfer_rows_raw)
-        transfer_count = sum(row.count for row in transfer_rows_raw)
+        transfer_totals = transfer_monitor_totals(transfer_rows_raw)
+        transfer_count = transfer_totals.transfer_count
 
         with ui.column().classes("w-full gap-4"):
             with ui.card().classes("w-full"):
@@ -145,10 +142,11 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                             ui.label("Internal transfers are excluded from household inflow/outflow totals. They are shown here only for monitoring movements between own accounts or pools.").classes("text-sm text-gray-600")
                             with ui.row().classes("gap-4"):
                                 for label, value in (
-                                    ("Transfer inflow", transfer_inflow),
-                                    ("Transfer outflow", transfer_outflow),
-                                    ("Net transfer movement", transfer_net),
-                                    ("Absolute transfer movement", transfer_absolute),
+                                    ("Matched transfers", transfer_totals.matched_transfers),
+                                    ("Unmatched transfer inflow", transfer_totals.unmatched_transfer_inflow),
+                                    ("Unmatched transfer outflow", transfer_totals.unmatched_transfer_outflow),
+                                    ("Net transfer movement", transfer_totals.net_transfer_movement),
+                                    ("Absolute transfer movement", transfer_totals.absolute_transfer_movement),
                                 ):
                                     with ui.card().classes("min-w-40"):
                                         ui.label(label).classes("text-sm text-gray-500")
@@ -158,24 +156,36 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                                     ui.label(str(transfer_count)).classes("text-xl font-bold")
                             transfer_rows = [
                                 {
-                                    "category": row.category,
-                                    "owner": row.owner,
+                                    "group_id": row.group_id,
+                                    "status": row.status,
+                                    "currency": row.currency,
                                     "count": row.count,
                                     "transfer_inflow": f"{row.transfer_inflow:.2f}",
                                     "transfer_outflow": f"{row.transfer_outflow:.2f}",
+                                    "matched_amount": f"{row.matched_amount:.2f}",
+                                    "unmatched_inflow": f"{row.unmatched_inflow:.2f}",
+                                    "unmatched_outflow": f"{row.unmatched_outflow:.2f}",
                                     "net_movement": f"{row.net_movement:.2f}",
                                     "absolute_movement": f"{row.absolute_movement:.2f}",
+                                    "category": row.category,
+                                    "owner": row.owner,
                                 }
                                 for row in transfer_rows_raw
                             ]
                             ui.table(columns=[
-                                {"name": "category", "label": "Category", "field": "category", "align": "left"},
-                                {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
+                                {"name": "group_id", "label": "Transfer group", "field": "group_id", "align": "left"},
+                                {"name": "status", "label": "Status", "field": "status", "align": "left"},
+                                {"name": "currency", "label": "Currency", "field": "currency"},
                                 {"name": "count", "label": "Count", "field": "count", "align": "right"},
                                 {"name": "transfer_inflow", "label": "Transfer inflow", "field": "transfer_inflow", "align": "right"},
                                 {"name": "transfer_outflow", "label": "Transfer outflow", "field": "transfer_outflow", "align": "right"},
+                                {"name": "matched_amount", "label": "Matched amount", "field": "matched_amount", "align": "right"},
+                                {"name": "unmatched_inflow", "label": "Unmatched inflow", "field": "unmatched_inflow", "align": "right"},
+                                {"name": "unmatched_outflow", "label": "Unmatched outflow", "field": "unmatched_outflow", "align": "right"},
                                 {"name": "net_movement", "label": "Net movement", "field": "net_movement", "align": "right"},
                                 {"name": "absolute_movement", "label": "Absolute movement", "field": "absolute_movement", "align": "right"},
+                                {"name": "category", "label": "Category", "field": "category", "align": "left"},
+                                {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
                             ], rows=transfer_rows).classes("w-full")
                 with ui.tab_panel(yearly_tab):
                     selected_year = filters.period.year or years[-1]
@@ -189,6 +199,9 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                             "potential_savings": f"{row.potential_savings:.2f}",
                             "deficit": f"{row.deficit:.2f}",
                             "transfer_count": row.transfer_count,
+                            "matched_transfers": f"{row.matched_transfers:.2f}",
+                            "unmatched_transfer_inflow": f"{row.unmatched_transfer_inflow:.2f}",
+                            "unmatched_transfer_outflow": f"{row.unmatched_transfer_outflow:.2f}",
                             "transfer_absolute_movement": f"{row.transfer_absolute_movement:.2f}",
                             "transfer_net_movement": f"{row.transfer_net_movement:.2f}",
                         }
@@ -202,6 +215,9 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         {"name": "potential_savings", "label": "Potential savings", "field": "potential_savings", "align": "right"},
                         {"name": "deficit", "label": "Deficit", "field": "deficit", "align": "right"},
                         {"name": "transfer_count", "label": "Transfer count", "field": "transfer_count", "align": "right"},
+                        {"name": "matched_transfers", "label": "Matched transfers", "field": "matched_transfers", "align": "right"},
+                        {"name": "unmatched_transfer_inflow", "label": "Unmatched transfer inflow", "field": "unmatched_transfer_inflow", "align": "right"},
+                        {"name": "unmatched_transfer_outflow", "label": "Unmatched transfer outflow", "field": "unmatched_transfer_outflow", "align": "right"},
                         {"name": "transfer_absolute_movement", "label": "Transfer movement", "field": "transfer_absolute_movement", "align": "right"},
                         {"name": "transfer_net_movement", "label": "Transfer net", "field": "transfer_net_movement", "align": "right"},
                     ], rows=rows).classes("w-full")
