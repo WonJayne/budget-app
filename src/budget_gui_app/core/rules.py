@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Iterable
 
-from .models import Rule, Transaction
+from .models import Rule, Transaction, transfer_group_id_for_rule
 
 
 class RuleEngine:
@@ -28,7 +28,7 @@ class RuleEngine:
 
         base = transaction
         if transaction.assignment_source == "rule":
-            base = replace(transaction, category=None, owner=None, assignment_source=None, cash_flow_type=None)
+            base = replace(transaction, category=None, owner=None, assignment_source=None, cash_flow_type=None, transfer_group_id=None, transfer_note=None)
 
         implied_flow_type = base.flow_type
         if implied_flow_type is None:
@@ -43,6 +43,8 @@ class RuleEngine:
                     owner=rule.owner,
                     cash_flow_type=rule.rule_type,
                     assignment_source="rule",
+                    transfer_group_id=transfer_group_id_for_rule(rule, base) if rule.rule_type == "transfer" else None,
+                    transfer_note=rule.transfer_note if rule.rule_type == "transfer" else None,
                 )
         return base
 

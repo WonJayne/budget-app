@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import calendar
+from datetime import date
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -10,8 +11,9 @@ from nicegui import ui
 
 from ..core.periods import PeriodFilter, available_years, default_period_filter
 from ..core.sankey import DEFAULT_PALETTE, SankeyBuilder, category_colour, is_valid_hex_colour
-from ..core.state import AppState
-from ..core.summaries import cash_flow_totals, included_transactions, summarize_transactions, transfer_monitor_totals, transfer_summary, yearly_overview
+from ..core.models import BudgetTarget
+from ..core.state import AppState, DEFAULT_CURRENCY
+from ..core.summaries import budget_comparison, budget_plan_totals, cash_flow_totals, included_transactions, summarize_transactions, transfer_monitor_totals, transfer_summary, yearly_overview
 
 
 @dataclass
@@ -24,6 +26,9 @@ class Filters:
     show_transfers: bool = False
     selected_colour_category: str | None = None
     selected_colour: str = DEFAULT_PALETTE[0]
+    budget_year: int | None = None
+    budget_month: int | None = None
+    budget_currency: str = DEFAULT_CURRENCY
 
 
 def build_visualisation_page(get_state: Callable[[], AppState], on_state_change: Callable[[AppState], None]) -> Callable[[], None]:
@@ -40,6 +45,87 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
         if filters.owner not in owners:
             filters.owner = "All"
         return years, owners, currency_options
+
+
+    def budget_target_dialog(target: BudgetTarget | None = None) -> None:
+        state = get_state()
+        catalog = state.option_catalog()
+        categories = sorted(set(catalog.inflow_categories) | set(catalog.outflow_categories))
+        with ui.dialog() as dialog, ui.card().classes("w-96"):
+            ui.label("Edit budget target" if target else "Add budget target").classes("text-lg font-bold")
+            name = ui.input("Name", value=target.name if target else "").classes("w-full")
+            target_type = ui.select({"inflow": "Inflow", "outflow": "Outflow", "savings": "Savings"}, label="Type", value=target.target_type if target else "outflow").classes("w-full")
+            category = ui.select([""] + categories, label="Category", value=target.category if target and target.category else "").props("use-input new-value-mode=add-unique").classes("w-full")
+            owner = ui.select([""] + list(catalog.owners), label="Owner", value=target.owner if target and target.owner else "").props("use-input new-value-mode=add-unique").classes("w-full")
+            currency = ui.select(list(catalog.currencies), label="Currency", value=target.currency if target else DEFAULT_CURRENCY).props("use-input new-value-mode=add-unique").classes("w-full")
+            monthly_amount = ui.number("Monthly amount", value=target.monthly_amount if target else 0.0, format="%.2f").classes("w-full")
+            active = ui.switch("Active", value=target.active if target else True)
+            notes = ui.input("Notes", value=target.notes if target and target.notes else "").classes("w-full")
+
+            def save() -> None:
+                saved = BudgetTarget(
+                    id=target.id if target else BudgetTarget.make_id(name.value or "Budget target", target_type.value, currency.value, str(len(state.budget_targets))),
+                    name=name.value or "Budget target",
+                    target_type=target_type.value,
+                    category=category.value or None,
+                    owner=owner.value or None,
+                    currency=currency.value,
+                    monthly_amount=float(monthly_amount.value or 0),
+                    active=bool(active.value),
+                    notes=notes.value or None,
+                )
+                on_state_change(get_state().update_budget_target(saved) if target else get_state().add_budget_target(saved))
+                dialog.close()
+                ui.notify("Budget target saved.")
+
+            with ui.row():
+                ui.button("Cancel", on_click=dialog.close)
+                ui.button("Save", on_click=save)
+        dialog.open()
+
+    def budget_section(state: AppState, years: tuple[int, ...], currencies: list[str]) -> None:
+        today = date.today()
+        if filters.budget_year is None:
+            filters.budget_year = (filters.period.year if filters.period and filters.period.year else today.year)
+        if filters.budget_month is None:
+            filters.budget_month = (filters.period.month if filters.period and filters.period.month else today.month)
+        if filters.budget_currency not in currencies or filters.budget_currency == "All":
+            filters.budget_currency = "CHF" if "CHF" in currencies else (currencies[1] if len(currencies) > 1 else DEFAULT_CURRENCY)
+        with ui.expansion("Budget / Plan", icon="savings", value=True).classes("w-full"):
+            ui.label("Monthly budget targets compare your plan with actuals and a simple linear month-end projection. Transfers and ignored transactions are excluded by default.").classes("text-sm text-gray-600")
+            with ui.row().classes("items-center"):
+                ui.select(list(years), label="Year", value=filters.budget_year, on_change=lambda event: (setattr(filters, "budget_year", int(event.value)), content.refresh())).classes("w-32")
+                ui.select(list(range(1, 13)), label="Month", value=filters.budget_month, on_change=lambda event: (setattr(filters, "budget_month", int(event.value)), content.refresh())).classes("w-32")
+                ui.select([c for c in currencies if c != "All"], label="Currency", value=filters.budget_currency, on_change=lambda event: (setattr(filters, "budget_currency", event.value), content.refresh())).classes("w-36")
+                ui.button("Add target", on_click=lambda: budget_target_dialog())
+            totals = budget_plan_totals(state.transactions, state.budget_targets, filters.budget_year, filters.budget_month, filters.budget_currency, today)
+            with ui.row().classes("gap-4"):
+                for label, value in (("Planned inflow", totals.planned_inflow), ("Projected inflow", totals.projected_inflow), ("Planned outflow", totals.planned_outflow), ("Projected outflow", totals.projected_outflow), ("Planned savings", totals.planned_savings), ("Projected savings", totals.projected_savings), ("Projected budget variance", totals.projected_budget_variance)):
+                    with ui.card().classes("min-w-40"):
+                        ui.label(label).classes("text-sm text-gray-600")
+                        ui.label(f"{value:.2f} {filters.budget_currency}").classes("text-lg font-bold")
+            rows = [
+                {"target": row.target_name, "type": row.target_type, "category": row.category or "All", "owner": row.owner or "All", "budget": f"{row.budget:.2f}", "actual": f"{row.actual:.2f}", "projected": f"{row.projected:.2f}", "difference": f"{row.difference:.2f}", "status": row.status}
+                for row in budget_comparison(state.transactions, state.budget_targets, filters.budget_year, filters.budget_month, filters.budget_currency, today)
+            ]
+            ui.table(columns=[
+                {"name": "target", "label": "Target", "field": "target", "align": "left"},
+                {"name": "type", "label": "Type", "field": "type"},
+                {"name": "category", "label": "Category", "field": "category", "align": "left"},
+                {"name": "owner", "label": "Owner", "field": "owner", "align": "left"},
+                {"name": "budget", "label": "Budget", "field": "budget", "align": "right"},
+                {"name": "actual", "label": "Actual", "field": "actual", "align": "right"},
+                {"name": "projected", "label": "Projected month-end", "field": "projected", "align": "right"},
+                {"name": "difference", "label": "Difference", "field": "difference", "align": "right"},
+                {"name": "status", "label": "Status", "field": "status"},
+            ], rows=rows).classes("w-full")
+            for target in state.budget_targets:
+                if target.currency == filters.budget_currency:
+                    with ui.row().classes("items-center gap-2"):
+                        ui.label(f"{target.name} ({'active' if target.active else 'inactive'})")
+                        ui.button("Edit", on_click=lambda _, t=target: budget_target_dialog(t))
+                        ui.button("Delete", color="negative", on_click=lambda _, t=target: on_state_change(get_state().remove_budget_target(t.id)))
+            ui.label("Projection is a simple linear month-to-date estimate; it is most useful for variable outflows and less reliable for one-off or fixed monthly payments.").classes("text-xs text-gray-500")
 
     def period_controls(years: tuple[int, ...]) -> None:
         assert filters.period is not None
@@ -106,6 +192,8 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                     ui.switch("Include ignored", value=filters.include_ignored, on_change=lambda event: (setattr(filters, "include_ignored", event.value), content.refresh()))
                     ui.switch("Show internal transfers", value=filters.show_transfers, on_change=lambda event: (setattr(filters, "show_transfers", event.value), content.refresh()))
                 ui.label(f"Showing: {filters.period.label} • Currency: {filters.currency} • Owners: {filters.owner}").classes("text-sm text-gray-600")
+
+            budget_section(state, years, currencies)
 
             with ui.row().classes("gap-4"):
                 for label, value in (

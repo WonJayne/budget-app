@@ -122,3 +122,38 @@ Older full-backup files with missing fields are loaded with safe defaults where 
 
 - `examples/sample_transactions.csv` contains a normalized CSV sample with Flo, Nina, and Shared inflows/outflows.
 - `examples/sample_state.json` contains a state export sample with inflow/outflow rules, category colours, classified transactions, and one unclassified transaction for review.
+
+## CSV re-import modes
+
+Transaction CSV import is explicit so re-importing corrected bank/card statements is predictable:
+
+- **Append new transactions** is the safest default and matches the original app behaviour. Existing transactions are kept, duplicate transaction IDs are skipped, and new transaction IDs are added.
+- **Replace source period** is for re-importing a corrected full statement export. The app uses the selected/imported source label and the uploaded CSV date range, removes existing CSV-imported entries for that same source and date range, imports all rows from the new CSV, keeps manual entries, keeps rules/profile, and reapplies rules.
+- **Reconcile source period** is a report-only mode. It reports duplicates, new rows, and existing rows in the same source/date range that are missing from the uploaded file.
+
+The import source defaults to the uploaded filename stem, but can be set to an existing source such as `Gemeinschaftskonto`, `Nina neon`, `Flo neon`, `Viseca`, or `Manual`. This source label matters for source-scoped rules and for replace/reconcile behaviour.
+
+Without a stable bank transaction ID, changed rows cannot be reliably matched to their previous version. The app's transaction ID is based on date, account, description, amount, and currency, so changing any of those fields creates a new transaction ID. Use **Replace source period** when a CSV is a corrected full statement export.
+
+## Transfer grouping rules
+
+Internal-transfer rules can optionally assign transfer groups automatically. In the rule dialog, transfer rules show a **Transfer grouping** section with a strategy, label, and note:
+
+- `none` leaves transfer group fields untouched.
+- `fixed` uses a stable slug of the label.
+- `same_day_amount` creates `label-YYYY-MM-DD-ABS_AMOUNT-CURRENCY`.
+- `same_month_amount` creates `label-YYYY-MM-ABS_AMOUNT-CURRENCY`.
+
+Use `same_month_amount` or `same_day_amount` when two source-specific transfer rules should match the two sides of the same internal transfer. For example, an internal-transfer-out rule on `Nina neon` and an internal-transfer-in rule on `Gemeinschaftskonto` can share the label `nina-to-shared`; matching opposite sides for May 2026 and 1350 CHF will both receive `nina-to-shared-2026-05-1350.00-CHF` and the transfer monitor can show the group as balanced.
+
+Rule-based transfer groups and notes are recalculated when rules change, so deleting or editing a rule removes stale rule-created transfer metadata. Manual transfer groups and notes survive rule reapplication.
+
+## Budget / Plan
+
+The Visualisation tab includes a **Budget / Plan** section for simple monthly planning. Budget targets are monthly values with a name, type (`inflow`, `outflow`, or `savings`), optional category/owner filters, currency, monthly amount, active flag, and notes. Targets can be added, edited, deleted, and activated/deactivated.
+
+For the selected month and currency, the app shows plan cards and a comparison table with budget, actual, projected month-end, difference to budget, and status. Transfers are excluded from budget comparisons and projections, and ignored transactions are excluded by default.
+
+Projection is intentionally simple and transparent: historical months use actuals, future months project to zero, and the current month uses a linear month-to-date estimate (`actual / elapsed_month_fraction`). This is most useful for variable outflows and less reliable for one-off or fixed monthly payments such as salaries.
+
+Full backups include budget targets. Rules/profile export/import also includes budget targets because they are reusable household planning configuration.

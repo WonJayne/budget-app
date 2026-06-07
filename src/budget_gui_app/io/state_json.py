@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from ..core.models import AppMetadata, AppProfile, CategoryStyle, Rule, Transaction, import_source_default
+from ..core.models import AppMetadata, AppProfile, BudgetTarget, CategoryStyle, Rule, Transaction, import_source_default
 from ..core.sankey import is_valid_hex_colour
 from ..core.state import AppState
 
@@ -33,6 +33,7 @@ class StateJsonRepository:
             "profile": self._profile_to_dict(state.profile),
             "transactions": [self._transaction_to_dict(tx) for tx in state.transactions],
             "rules": [self._rule_to_dict(rule) for rule in state.rules],
+            "budget_targets": [self._budget_target_to_dict(target) for target in state.budget_targets],
             "category_styles": [self._category_style_to_dict(style) for style in state.category_styles],
         }
 
@@ -49,6 +50,7 @@ class StateJsonRepository:
                 "accounts": list(catalog.accounts),
             },
             "rules": [self._rule_to_dict(rule) for rule in state.rules],
+            "budget_targets": [self._budget_target_to_dict(target) for target in state.budget_targets],
             "category_styles": [self._category_style_to_dict(style) for style in state.category_styles],
         }
 
@@ -58,6 +60,7 @@ class StateJsonRepository:
             transactions=self._transactions_from_data(data),
             rules=self._rules_from_data(data),
             category_styles=self._category_styles_from_data(data),
+            budget_targets=self._budget_targets_from_data(data),
             metadata=metadata,
             profile=self._profile_from_data(data),
         )
@@ -69,6 +72,7 @@ class StateJsonRepository:
             state,
             rules=self._rules_from_data(data),
             category_styles=self._category_styles_from_data(data),
+            budget_targets=self._budget_targets_from_data(data) if "budget_targets" in data else state.budget_targets,
             metadata=metadata,
             profile=self._profile_from_data(data),
         )
@@ -132,6 +136,22 @@ class StateJsonRepository:
             "transfer_sign_scope": rule.transfer_sign_scope,
             "priority": rule.priority,
             "import_source": rule.import_source,
+            "transfer_group_strategy": rule.transfer_group_strategy,
+            "transfer_group_label": rule.transfer_group_label,
+            "transfer_note": rule.transfer_note,
+        }
+
+    def _budget_target_to_dict(self, target: BudgetTarget) -> dict[str, Any]:
+        return {
+            "id": target.id,
+            "name": target.name,
+            "target_type": target.target_type,
+            "category": target.category,
+            "owner": target.owner,
+            "currency": target.currency,
+            "monthly_amount": target.monthly_amount,
+            "active": target.active,
+            "notes": target.notes,
         }
 
     def _category_style_to_dict(self, style: CategoryStyle) -> dict[str, str | None]:
@@ -200,6 +220,9 @@ class StateJsonRepository:
             transfer_sign_scope = item.get("transfer_sign_scope", "any")
             if transfer_sign_scope not in ("any", "in", "out"):
                 transfer_sign_scope = "any"
+            transfer_group_strategy = item.get("transfer_group_strategy", "none")
+            if transfer_group_strategy not in ("none", "fixed", "same_day_amount", "same_month_amount"):
+                transfer_group_strategy = "none"
             rules.append(
                 Rule(
                     id=item["id"],
@@ -210,9 +233,33 @@ class StateJsonRepository:
                     priority=int(item.get("priority", 0)),
                     import_source=item.get("import_source"),
                     transfer_sign_scope=transfer_sign_scope,
+                    transfer_group_strategy=transfer_group_strategy,
+                    transfer_group_label=item.get("transfer_group_label"),
+                    transfer_note=item.get("transfer_note"),
                 )
             )
         return tuple(rules)
+
+    def _budget_targets_from_data(self, data: dict[str, Any]) -> tuple[BudgetTarget, ...]:
+        targets: list[BudgetTarget] = []
+        for item in data.get("budget_targets", []):
+            target_type = item.get("target_type", "outflow")
+            if target_type not in ("inflow", "outflow", "savings"):
+                target_type = "outflow"
+            targets.append(
+                BudgetTarget(
+                    id=item["id"],
+                    name=item.get("name", "Budget target"),
+                    target_type=target_type,
+                    category=item.get("category"),
+                    owner=item.get("owner"),
+                    currency=item.get("currency", "CHF"),
+                    monthly_amount=float(item.get("monthly_amount", 0.0)),
+                    active=bool(item.get("active", True)),
+                    notes=item.get("notes"),
+                )
+            )
+        return tuple(targets)
 
     def _category_styles_from_data(self, data: dict[str, Any]) -> tuple[CategoryStyle, ...]:
         style_items = data.get("category_styles", [])

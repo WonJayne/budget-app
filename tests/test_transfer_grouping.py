@@ -174,3 +174,68 @@ def test_editing_transfer_rule_removes_stale_rule_based_transfer_classification(
     assert state.transactions[0].flow_type == "outflow"
     assert state.transactions[0].category is None
     assert state.transactions[0].assignment_source is None
+
+
+def test_transfer_rule_group_strategies_assign_expected_ids() -> None:
+    tx = Transaction("t1", date(2026, 5, 27), "card", "Nina Fluekiger", -1350, "CHF")
+
+    none = Rule("r-none", "nina", "Internal transfer", "Nina", "transfer", transfer_group_strategy="none", transfer_group_label="nina-to-shared")
+    fixed = Rule("r-fixed", "nina", "Internal transfer", "Nina", "transfer", transfer_group_strategy="fixed", transfer_group_label="Nina to Shared")
+    day = Rule("r-day", "nina", "Internal transfer", "Nina", "transfer", transfer_group_strategy="same_day_amount", transfer_group_label="credit card settlement")
+    month = Rule("r-month", "nina", "Internal transfer", "Nina", "transfer", transfer_group_strategy="same_month_amount", transfer_group_label="nina-to-shared", transfer_note="monthly contribution")
+
+    assert AppState(transactions=(tx,), rules=(none,)).reapply_rules().transactions[0].transfer_group_id is None
+    assert AppState(transactions=(tx,), rules=(fixed,)).reapply_rules().transactions[0].transfer_group_id == "nina-to-shared"
+    assert AppState(transactions=(tx,), rules=(day,)).reapply_rules().transactions[0].transfer_group_id == "credit-card-settlement-2026-05-27-1350.00-CHF"
+    classified = AppState(transactions=(tx,), rules=(month,)).reapply_rules().transactions[0]
+    assert classified.transfer_group_id == "nina-to-shared-2026-05-1350.00-CHF"
+    assert classified.transfer_note == "monthly contribution"
+
+
+def test_opposite_transfer_sides_same_month_amount_get_same_rule_group() -> None:
+    out = Transaction("out", date(2026, 5, 1), "Nina neon", "Gemeinschaftskonto", -1350, "CHF", import_source="Nina neon")
+    inn = Transaction("in", date(2026, 5, 3), "Shared", "Nina Fluekiger", 1350, "CHF", import_source="Gemeinschaftskonto")
+    rules = (
+        Rule("r-out", "gemeinschaft", "Internal transfer", "Nina", "transfer", import_source="Nina neon", transfer_sign_scope="out", transfer_group_strategy="same_month_amount", transfer_group_label="nina-to-shared"),
+        Rule("r-in", "nina", "Internal transfer", "Nina", "transfer", import_source="Gemeinschaftskonto", transfer_sign_scope="in", transfer_group_strategy="same_month_amount", transfer_group_label="nina-to-shared"),
+    )
+
+    state = AppState(transactions=(out, inn), rules=rules).reapply_rules()
+
+    assert {tx.transfer_group_id for tx in state.transactions} == {"nina-to-shared-2026-05-1350.00-CHF"}
+
+
+def test_manual_transfer_group_survives_and_deleted_rule_removes_rule_group() -> None:
+    manual = transfer("manual", -100, "manual-group")
+    rule_tx = Transaction("rule", date(2026, 5, 1), "account", "Payment", -100, "CHF")
+    rule = Rule("r", "payment", "Internal transfer", "Shared", "transfer", transfer_group_strategy="fixed", transfer_group_label="rule-group")
+    state = AppState(transactions=(manual, rule_tx), rules=(rule,)).reapply_rules()
+
+    assert state.transactions[0].transfer_group_id == "manual-group"
+    assert state.transactions[1].transfer_group_id == "rule-group"
+
+    state = state.remove_rule("r")
+
+    assert state.transactions[0].transfer_group_id == "manual-group"
+    assert state.transactions[1].transfer_group_id is None
+
+
+def test_profile_export_import_preserves_transfer_grouping_fields() -> None:
+    repository = StateJsonRepository()
+    rule = Rule(
+        "r-profile",
+        "payment",
+        "Internal transfer",
+        "Shared",
+        "transfer",
+        transfer_group_strategy="same_day_amount",
+        transfer_group_label="credit-card-settlement",
+        transfer_note="monthly card bill",
+    )
+
+    profile = repository.to_profile_dict(AppState(rules=(rule,)))
+    loaded = repository.apply_profile_dict(AppState(), profile)
+
+    assert loaded.rules[0].transfer_group_strategy == "same_day_amount"
+    assert loaded.rules[0].transfer_group_label == "credit-card-settlement"
+    assert loaded.rules[0].transfer_note == "monthly card bill"

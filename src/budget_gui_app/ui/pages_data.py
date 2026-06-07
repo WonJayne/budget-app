@@ -28,6 +28,8 @@ FLOW_TYPE_CHOICES = {
     "transfer_in": "Internal transfer in",
     "transfer_out": "Internal transfer out",
 }
+TRANSFER_GROUP_STRATEGY_CHOICES = {"none": "None", "fixed": "Fixed", "same_day_amount": "Same day + amount", "same_month_amount": "Same month + amount"}
+
 RULE_APPLICABILITY_CHOICES = {
     "inflow": "Inflow",
     "outflow": "Outflow",
@@ -159,6 +161,9 @@ def build_data_page(holder: UiState) -> None:
     importer = TransactionImporter()
     repository = StateJsonRepository()
     filters = DataFilters()
+    import_mode = {"value": "append"}
+    import_source_override = {"value": ""}
+    import_source_choice = {"value": "Uploaded filename"}
 
     def set_state(state: AppState) -> None:
         holder.state = state
@@ -172,12 +177,19 @@ def build_data_page(holder: UiState) -> None:
             temp_path = Path(temp_file.name)
         try:
             upload_name = upload_event_name(event)
-            transactions = importer.import_csv(temp_path, import_source=Path(upload_name).stem or upload_name)
-            existing_ids = {transaction.id for transaction in holder.state.transactions}
-            new_count = sum(1 for transaction in transactions if transaction.id not in existing_ids)
-            skipped_count = len(transactions) - new_count
-            set_state(holder.state.add_transactions(transactions))
-            ui.notify(f"Imported {new_count} new transactions, skipped {skipped_count} duplicates. Rules/profile were kept.")
+            source_label = import_source_override["value"] or Path(upload_name).stem or upload_name
+            transactions = importer.import_csv(temp_path, import_source=source_label)
+            if import_mode["value"] == "replace":
+                new_state, report = holder.state.import_transactions_replace_source_period(transactions, source_label)
+                set_state(new_state)
+                ui.notify(f"Replaced {report['replaced']} old CSV entries for {source_label}; imported {report['added']} corrected rows. Manual entries and rules/profile were kept.")
+            elif import_mode["value"] == "reconcile":
+                report = holder.state.reconcile_transactions_source_period(transactions, source_label)
+                ui.notify(f"Reconcile report for {source_label}: {report['skipped']} duplicates, {report['added']} new rows, {report['missing']} existing rows missing from upload. Changed rows are treated as new without a stable bank ID.")
+            else:
+                new_state, report = holder.state.import_transactions_append(transactions)
+                set_state(new_state)
+                ui.notify(f"Imported {report['added']} new transactions, skipped {report['skipped']} duplicates. Rules/profile were kept.")
         finally:
             temp_path.unlink(missing_ok=True)
 
@@ -236,7 +248,7 @@ def build_data_page(holder: UiState) -> None:
             return source_new.value or None
         return source_select.value
 
-    def save_rule(rule_id: str | None, pattern_input, rule_type_input, category_select, category_new, owner_select, owner_new, priority_input, dialog, source_select=None, source_new=None, transfer_sign_scope_input=None) -> None:
+    def save_rule(rule_id: str | None, pattern_input, rule_type_input, category_select, category_new, owner_select, owner_new, priority_input, dialog, source_select=None, source_new=None, transfer_sign_scope_input=None, transfer_strategy_input=None, transfer_label_input=None, transfer_note_input=None) -> None:
         priority = int(priority_input.value or 0)
         rule_type, transfer_sign_scope = rule_applicability_to_model(rule_type_input.value)
         category = selected_value(category_select, category_new)
@@ -250,6 +262,9 @@ def build_data_page(holder: UiState) -> None:
             priority=priority,
             import_source=selected_import_source(source_select, source_new) if source_select is not None else None,
             transfer_sign_scope=transfer_sign_scope,
+            transfer_group_strategy=(transfer_strategy_input.value if transfer_strategy_input is not None and rule_type == "transfer" else "none"),
+            transfer_group_label=((transfer_label_input.value or None) if transfer_label_input is not None and rule_type == "transfer" else None),
+            transfer_note=((transfer_note_input.value or None) if transfer_note_input is not None and rule_type == "transfer" else None),
         )
         set_state(holder.state.update_rule(rule) if rule_id else holder.state.add_rule(rule))
         dialog.close()
@@ -277,9 +292,16 @@ def build_data_page(holder: UiState) -> None:
             source_new.visible = source_select.value == OTHER_OPTION
             source_select.on_value_change(lambda event: source_new.set_visibility(event.value == OTHER_OPTION))
             priority = ui.number("Priority", value=rule.priority if rule else 0, format="%.0f").classes("w-full")
+            with ui.expansion("Transfer grouping", icon="link").classes("w-full") as transfer_grouping:
+                ui.label("Use automatic grouping when two transfer rules should match the two sides of the same internal movement.").classes("text-sm text-gray-600")
+                transfer_strategy = ui.select(TRANSFER_GROUP_STRATEGY_CHOICES, label="Transfer group strategy", value=rule.transfer_group_strategy if rule else "none").classes("w-full")
+                transfer_label = ui.input("Transfer group label", value=rule.transfer_group_label if rule else "", placeholder="e.g. nina-to-shared").classes("w-full")
+                transfer_note = ui.input("Transfer note", value=rule.transfer_note if rule else "", placeholder="Optional note for matched transfers").classes("w-full")
+            transfer_grouping.visible = flow_type_from_selection(rule_type.value) == "transfer"
+            rule_type.on_value_change(lambda event: transfer_grouping.set_visibility(flow_type_from_selection(event.value) == "transfer"))
             with ui.row():
                 ui.button("Cancel", on_click=dialog.close)
-                ui.button("Save", on_click=lambda: save_rule(rule.id if rule else None, pattern, rule_type, category_select, category_new, owner_select, owner_new, priority, dialog, source_select, source_new, transfer_sign_scope))
+                ui.button("Save", on_click=lambda: save_rule(rule.id if rule else None, pattern, rule_type, category_select, category_new, owner_select, owner_new, priority, dialog, source_select, source_new, transfer_sign_scope, transfer_strategy, transfer_label, transfer_note))
         dialog.open()
 
     def assign_dialog(transaction_id: str) -> None:
@@ -337,9 +359,16 @@ def build_data_page(holder: UiState) -> None:
             source_new.visible = source_select.value == OTHER_OPTION
             source_select.on_value_change(lambda event: source_new.set_visibility(event.value == OTHER_OPTION))
             priority = ui.number("Priority", value=0, format="%.0f").classes("w-full")
+            with ui.expansion("Transfer grouping", icon="link").classes("w-full") as transfer_grouping:
+                ui.label("Use automatic grouping when two transfer rules should match the two sides of the same internal movement.").classes("text-sm text-gray-600")
+                transfer_strategy = ui.select(TRANSFER_GROUP_STRATEGY_CHOICES, label="Transfer group strategy", value="none").classes("w-full")
+                transfer_label = ui.input("Transfer group label", placeholder="e.g. nina-to-shared").classes("w-full")
+                transfer_note = ui.input("Transfer note", placeholder="Optional note for matched transfers").classes("w-full")
+            transfer_grouping.visible = flow_type_from_selection(rule_type.value) == "transfer"
+            rule_type.on_value_change(lambda event: transfer_grouping.set_visibility(flow_type_from_selection(event.value) == "transfer"))
             with ui.row():
                 ui.button("Cancel", on_click=dialog.close)
-                ui.button("Save rule", on_click=lambda: save_rule(None, pattern, rule_type, category_select, category_new, owner_select, owner_new, priority, dialog, source_select, source_new, transfer_sign_scope))
+                ui.button("Save rule", on_click=lambda: save_rule(None, pattern, rule_type, category_select, category_new, owner_select, owner_new, priority, dialog, source_select, source_new, transfer_sign_scope, transfer_strategy, transfer_label, transfer_note))
         dialog.open()
 
     def manual_entry_dialog(flow_type: FlowType, transaction: Transaction | None = None) -> None:
@@ -467,8 +496,24 @@ def build_data_page(holder: UiState) -> None:
     @ui.refreshable
     def content() -> None:
         with ui.column().classes("w-full gap-4"):
+            with ui.card().classes("w-full"):
+                ui.label("CSV import / re-import").classes("font-bold")
+                ui.label("Append skips duplicates and adds new rows. Replace deletes imported CSV entries for the same source/date range before importing the uploaded full statement. Reconcile is report-only.").classes("text-sm text-gray-600")
+                import_catalog = holder.state.option_catalog()
+                source_choices = ["Uploaded filename"] + list(import_catalog.import_sources) + [OTHER_OPTION]
+                with ui.row().classes("items-center"):
+                    ui.select({"append": "Append new transactions", "replace": "Replace source period", "reconcile": "Reconcile source period"}, label="Import mode", value=import_mode["value"], on_change=lambda event: import_mode.update(value=event.value)).classes("w-56")
+                    source_choice = ui.select(source_choices, label="Import source", value=import_source_choice["value"] if import_source_choice["value"] in source_choices else "Uploaded filename").classes("w-48")
+                    source_new = ui.input("New import source", value=import_source_override["value"], placeholder="Defaults to uploaded filename stem").classes("w-64")
+                    source_new.visible = source_choice.value == OTHER_OPTION
+                    def update_csv_source(event) -> None:
+                        import_source_choice["value"] = event.value
+                        source_new.set_visibility(event.value == OTHER_OPTION)
+                        import_source_override["value"] = "" if event.value == "Uploaded filename" else (source_new.value if event.value == OTHER_OPTION else event.value)
+                    source_choice.on_value_change(update_csv_source)
+                    source_new.on_value_change(lambda event: import_source_override.update(value=event.value or ""))
+                    ui.upload(label="Import transactions CSV", auto_upload=True, multiple=True, on_upload=import_csv).props("accept=.csv").classes("max-w-sm")
             with ui.row().classes("items-center"):
-                ui.upload(label="Import transactions CSV", auto_upload=True, multiple=True, on_upload=import_csv).props("accept=.csv").classes("max-w-sm")
                 ui.button("Export ledger CSV", on_click=export_csv)
                 ui.upload(label="Import full backup", auto_upload=True, on_upload=import_full_backup).props("accept=.json").classes("max-w-sm")
                 ui.button("Export full backup", on_click=export_full_backup)
