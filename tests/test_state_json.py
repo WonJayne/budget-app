@@ -54,6 +54,7 @@ def test_exporting_profile_contains_rules_and_colours_but_no_transactions() -> N
             "category": "Groceries",
             "owner": "shared",
             "rule_type": "outflow",
+            "transfer_sign_scope": "any",
             "priority": 1,
             "import_source": None,
         }
@@ -86,7 +87,7 @@ def test_importing_profile_updates_rules_and_colours_without_changing_transactio
     assert updated.transactions[0].description == transaction.description
     assert updated.transactions[0].category == "Groceries"
     assert updated.transactions[0].assignment_source == "rule"
-    assert updated.rules == (Rule("new", "coop", "Groceries", "Shared", "outflow", 3, None),)
+    assert updated.rules == (Rule("new", "coop", "Groceries", "Shared", "outflow", 3, None, "any"),)
     assert updated.category_styles == (CategoryStyle("Groceries", "#123456"),)
 
 

@@ -110,6 +110,7 @@ class StateJsonRepository:
             "source_file": tx.source_file,
             "import_source": tx.stable_import_source,
             "cash_flow_type": tx.flow_type,
+            "transfer_direction": tx.transfer_direction,
             "category": tx.category,
             "owner": tx.owner,
             "assignment_source": tx.assignment_source,
@@ -128,6 +129,7 @@ class StateJsonRepository:
             "category": rule.category,
             "owner": rule.owner,
             "rule_type": rule.rule_type,
+            "transfer_sign_scope": rule.transfer_sign_scope,
             "priority": rule.priority,
             "import_source": rule.import_source,
         }
@@ -195,6 +197,9 @@ class StateJsonRepository:
             rule_type = item.get("rule_type", "outflow")
             if rule_type not in ("inflow", "outflow", "transfer"):
                 rule_type = "outflow"
+            transfer_sign_scope = item.get("transfer_sign_scope", "any")
+            if transfer_sign_scope not in ("any", "in", "out"):
+                transfer_sign_scope = "any"
             rules.append(
                 Rule(
                     id=item["id"],
@@ -204,6 +209,7 @@ class StateJsonRepository:
                     rule_type=rule_type,
                     priority=int(item.get("priority", 0)),
                     import_source=item.get("import_source"),
+                    transfer_sign_scope=transfer_sign_scope,
                 )
             )
         return tuple(rules)
