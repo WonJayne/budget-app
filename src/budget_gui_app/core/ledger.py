@@ -9,7 +9,7 @@ from .models import FlowType, Transaction
 from .periods import PeriodFilter
 
 LedgerSourceFilter = Literal["all", "csv", "manual"]
-LedgerFlowFilter = Literal["all", "inflow", "outflow", "transfer"]
+LedgerFlowFilter = Literal["all", "inflow", "outflow", "transfer", "transfer_any", "transfer_in", "transfer_out"]
 LedgerStatusFilter = Literal["all", "classified", "unclassified", "ignored"]
 
 
@@ -43,7 +43,16 @@ def filter_ledger_transactions(transactions: Iterable[Transaction], filters: Led
         if filters.import_source != "all" and transaction.stable_import_source != filters.import_source:
             continue
         flow_type = transaction.flow_type
-        if filters.flow_type != "all" and flow_type != filters.flow_type:
+        if filters.flow_type == "transfer_any":
+            if flow_type != "transfer":
+                continue
+        elif filters.flow_type == "transfer_in":
+            if flow_type != "transfer" or transaction.amount <= 0:
+                continue
+        elif filters.flow_type == "transfer_out":
+            if flow_type != "transfer" or transaction.amount >= 0:
+                continue
+        elif filters.flow_type != "all" and flow_type != filters.flow_type:
             continue
         if filters.owner != "all" and transaction.owner != filters.owner:
             continue
