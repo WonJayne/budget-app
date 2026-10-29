@@ -14,8 +14,8 @@ from nicegui import events, ui
 
 from ..core.importers import TransactionImporter
 from ..core.ledger import LedgerFilters, filter_ledger_transactions, transaction_entry_source
-from ..core.models import FlowType, Rule, Transaction
-from ..core.periods import PeriodFilter, available_years, default_period_filter
+from ..core.models import FlowType, Rule, Transaction, new_id
+from ..core.periods import PeriodFilter, available_years, default_period_filter, entry_date_for_period
 from ..core.state import AppState, DEFAULT_ACCOUNT, DEFAULT_CURRENCY, DEFAULT_TRANSFER_CATEGORIES
 from ..io.state_json import StateJsonRepository
 from ..io.transactions_csv import transactions_to_csv
@@ -178,7 +178,7 @@ def build_data_page(holder: UiState) -> None:
         try:
             upload_name = upload_event_name(event)
             source_label = import_source_override["value"] or Path(upload_name).stem or upload_name
-            transactions = importer.import_csv(temp_path, import_source=source_label)
+            transactions = importer.import_csv(temp_path, import_source=source_label, source_file=upload_name)
             if import_mode["value"] == "replace":
                 new_state, report = holder.state.import_transactions_replace_source_period(transactions, source_label)
                 set_state(new_state)
@@ -190,6 +190,8 @@ def build_data_page(holder: UiState) -> None:
                 new_state, report = holder.state.import_transactions_append(transactions)
                 set_state(new_state)
                 ui.notify(f"Imported {report['added']} new transactions, skipped {report['skipped']} duplicates. Rules/profile were kept.")
+        except ValueError as exc:
+            ui.notify(str(exc), color="negative")
         finally:
             temp_path.unlink(missing_ok=True)
 
@@ -249,12 +251,15 @@ def build_data_page(holder: UiState) -> None:
         return source_select.value
 
     def save_rule(rule_id: str | None, pattern_input, rule_type_input, category_select, category_new, owner_select, owner_new, priority_input, dialog, source_select=None, source_new=None, transfer_sign_scope_input=None, transfer_strategy_input=None, transfer_label_input=None, transfer_note_input=None) -> None:
+        if not (pattern_input.value or "").strip():
+            ui.notify("Enter a non-empty rule pattern.", color="negative")
+            return
         priority = int(priority_input.value or 0)
         rule_type, transfer_sign_scope = rule_applicability_to_model(rule_type_input.value)
         category = selected_value(category_select, category_new)
         owner = selected_value(owner_select, owner_new)
         rule = Rule(
-            id=rule_id or Rule.make_id(pattern_input.value, category, owner, rule_type, priority, str(len(holder.state.rules)), transfer_sign_scope=transfer_sign_scope),
+            id=rule_id or new_id(),
             pattern=pattern_input.value,
             category=category,
             owner=owner,
@@ -330,6 +335,8 @@ def build_data_page(holder: UiState) -> None:
                     category=selected_value(category_select, category_new),
                     owner=selected_value(owner_select, owner_new),
                     ignored=transaction.ignored,
+                    transfer_group_id=transaction.transfer_group_id,
+                    transfer_note=transaction.transfer_note,
                 ))
                 dialog.close()
                 ui.notify("Transaction assigned.")
@@ -375,7 +382,7 @@ def build_data_page(holder: UiState) -> None:
         catalog = holder.state.option_catalog()
         initial_flow = transaction.flow_type if transaction else flow_type
         initial_selection = flow_selection_for_transaction(transaction) if transaction else ("transfer_out" if flow_type == "transfer" else flow_type)
-        initial_date = transaction.date if transaction else ((filters.period and filters.period.year and filters.period.month and date(filters.period.year, filters.period.month, 1)) or date.today())
+        initial_date = transaction.date if transaction else entry_date_for_period(filters.period)
         with ui.dialog() as dialog, ui.card().classes("w-96"):
             ui.label(("Edit" if transaction else "Add") + f" {FLOW_TYPE_CHOICES[initial_selection]}").classes("text-lg font-bold")
             rule_type = ui.select(FLOW_TYPE_CHOICES, label="Flow type", value=initial_selection).classes("w-full")
@@ -525,7 +532,7 @@ def build_data_page(holder: UiState) -> None:
             if filters.period is None:
                 filters.period = default_period_filter(holder.state.transactions)
             years = available_years(holder.state.transactions)
-            if filters.period.year not in years:
+            if filters.period.mode != "all" and filters.period.year not in years:
                 filters.period = default_period_filter(holder.state.transactions)
             with ui.card().classes("w-full"):
                 ui.label("Entries period").classes("font-bold")

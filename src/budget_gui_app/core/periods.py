@@ -48,6 +48,16 @@ def default_period_filter(transactions: Iterable[Transaction], today: date | Non
     return PeriodFilter(mode="month", year=current.year, month=current.month)
 
 
+def entry_date_for_period(period: PeriodFilter | None, today: date | None = None) -> date:
+    """Choose an entry date inside the selected period."""
+    current = today or date.today()
+    if period is None or period.mode == "all" or period.year is None:
+        return current
+    if period.mode == "month" and period.month is not None:
+        return date(period.year, period.month, 1)
+    return current if period.year == current.year else date(period.year, 1, 1)
+
+
 def filter_transactions_by_period(transactions: Iterable[Transaction], period: PeriodFilter) -> tuple[Transaction, ...]:
     return tuple(transaction for transaction in transactions if period.includes(transaction))
 

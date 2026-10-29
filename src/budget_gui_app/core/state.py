@@ -6,9 +6,21 @@ from dataclasses import dataclass, replace
 from datetime import date
 from typing import Iterable
 
-from .models import AppMetadata, AppProfile, BudgetTarget, CategoryStyle, FlowType, Rule, Transaction
+from .models import AppMetadata, AppProfile, BudgetTarget, CategoryStyle, FlowType, Rule, Transaction, new_id
 from .rules import RuleEngine
 from .sankey import is_valid_hex_colour
+
+
+def _new_transactions(transactions: Iterable[Transaction], existing_ids: set[str]) -> tuple[Transaction, ...]:
+    """Keep the first occurrence of each incoming ID, preserving input order."""
+    seen = set(existing_ids)
+    rows = []
+    for transaction in transactions:
+        if transaction.id not in seen:
+            rows.append(transaction)
+            seen.add(transaction.id)
+    return tuple(rows)
+
 
 DEFAULT_OWNERS = ("Flo", "Nina", "Shared")
 DEFAULT_CURRENCY = "CHF"
@@ -105,7 +117,7 @@ class AppState:
     def import_transactions_append(self, transactions: Iterable[Transaction]) -> tuple["AppState", dict[str, int]]:
         rows = tuple(transactions)
         existing_ids = {transaction.id for transaction in self.transactions}
-        new_rows = tuple(transaction for transaction in rows if transaction.id not in existing_ids)
+        new_rows = _new_transactions(rows, existing_ids)
         report = {"added": len(new_rows), "skipped": len(rows) - len(new_rows), "replaced": 0, "missing": 0}
         return (self.add_transactions(new_rows) if new_rows else self, report)
 
@@ -125,8 +137,11 @@ class AppState:
             )
         )
         replaced = len(self.transactions) - len(kept)
-        merged = kept + rows
-        report = {"added": len(rows), "skipped": 0, "replaced": replaced, "missing": replaced}
+        new_rows = _new_transactions(rows, {transaction.id for transaction in kept})
+        removed_ids = {transaction.id for transaction in self.transactions} - {transaction.id for transaction in kept}
+        incoming_ids = {transaction.id for transaction in new_rows}
+        merged = kept + new_rows
+        report = {"added": len(new_rows), "skipped": len(rows) - len(new_rows), "replaced": replaced, "missing": len(removed_ids - incoming_ids)}
         return replace(self, transactions=RuleEngine(self.rules).classify_many(merged)), report
 
     def reconcile_transactions_source_period(self, transactions: Iterable[Transaction], import_source: str) -> dict[str, int]:
@@ -150,11 +165,11 @@ class AppState:
 
     def add_transactions(self, transactions: Iterable[Transaction]) -> "AppState":
         existing_ids = {transaction.id for transaction in self.transactions}
-        added = [transaction for transaction in transactions if transaction.id not in existing_ids]
+        added = _new_transactions(transactions, existing_ids)
         if not added:
             return self
-        merged = self.transactions + tuple(added)
-        return replace(self, transactions=RuleEngine(self.rules).classify_many(merged))
+        classified = RuleEngine(self.rules).classify_many(added)
+        return replace(self, transactions=self.transactions + classified)
 
     def add_manual_transaction(
         self,
@@ -172,7 +187,7 @@ class AppState:
     ) -> "AppState":
         signed_amount = amount if flow_type == "transfer" else abs(amount) if flow_type == "inflow" else -abs(amount)
         transaction = Transaction(
-            id=Transaction.make_manual_id(tx_date, account, description, signed_amount, currency, str(len(self.transactions))),
+            id=new_id(),
             date=tx_date,
             account=account,
             description=description,
