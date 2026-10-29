@@ -1,5 +1,7 @@
 # Budget GUI App
 
+For the current critical review and prioritized implementation checklist, see [Review and next steps](REVIEW_AND_NEXT_STEPS.md).
+
 A local-only household cash-flow dashboard built with Python, NiceGUI, pandas, and Plotly. It imports normalized CSV transaction exports, classifies inflows, outflows, and internal transfers with editable rules, supports manual corrections, persists state as JSON, and visualises household cash flow with an embedded Sankey diagram.
 
 The app runs on `127.0.0.1` and intentionally has no cloud sync, user accounts, bank APIs, remote database, or external analytics.
@@ -24,7 +26,9 @@ date,account,description,amount,currency
 2026-05-03,shared_zkb,Migros Wipkingen,-84.30,CHF
 ```
 
-Additional columns are ignored. Transaction IDs are deterministic from the raw transaction fields, so duplicate imports are skipped.
+Additional columns are ignored. Transaction IDs are deterministic from the raw transaction fields, so duplicate imports are skipped, including repeated IDs within one upload. Appending classifies only newly added rows; changing rules still reclassifies the ledger.
+
+CSV imports reject missing required values, invalid dates, and non-finite amounts with a row-number error before changing the ledger. The original uploaded filename is retained as source provenance.
 
 ## Cash-flow model
 

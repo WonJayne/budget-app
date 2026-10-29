@@ -11,7 +11,7 @@ from nicegui import ui
 
 from ..core.periods import PeriodFilter, available_years, default_period_filter
 from ..core.sankey import DEFAULT_PALETTE, SankeyBuilder, category_colour, is_valid_hex_colour
-from ..core.models import BudgetTarget
+from ..core.models import BudgetTarget, new_id
 from ..core.state import AppState, DEFAULT_CURRENCY
 from ..core.summaries import budget_comparison, budget_plan_totals, cash_flow_totals, included_transactions, summarize_transactions, transfer_monitor_totals, transfer_summary, yearly_overview
 
@@ -64,7 +64,7 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
 
             def save() -> None:
                 saved = BudgetTarget(
-                    id=target.id if target else BudgetTarget.make_id(name.value or "Budget target", target_type.value, currency.value, str(len(state.budget_targets))),
+                    id=target.id if target else new_id(),
                     name=name.value or "Budget target",
                     target_type=target_type.value,
                     category=category.value or None,
@@ -224,7 +224,7 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                         include_ignored=filters.include_ignored,
                     )
                     ui.plotly(figure).classes("w-full h-[560px]")
-                    if filters.show_transfers or transfer_count:
+                    if filters.show_transfers:
                         with ui.card().classes("w-full mt-4"):
                             ui.label("Internal transfer monitor").classes("text-lg font-bold")
                             ui.label("Internal transfers are excluded from household inflow/outflow totals. They are shown here only for monitoring movements between own accounts or pools.").classes("text-sm text-gray-600")
@@ -293,7 +293,7 @@ def build_visualisation_page(get_state: Callable[[], AppState], on_state_change:
                             "transfer_absolute_movement": f"{row.transfer_absolute_movement:.2f}",
                             "transfer_net_movement": f"{row.transfer_net_movement:.2f}",
                         }
-                        for row in yearly_overview(state.transactions, selected_year, currency=currency_value, include_ignored=filters.include_ignored)
+                        for row in yearly_overview(state.transactions, selected_year, currency=currency_value, owner=owner_value, include_ignored=filters.include_ignored)
                     ]
                     ui.table(columns=[
                         {"name": "month", "label": "Month", "field": "month"},

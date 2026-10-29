@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from datetime import date
 from typing import Literal
+from uuid import uuid4
 
 AssignmentSource = Literal["manual", "rule"] | None
 FlowType = Literal["inflow", "outflow", "transfer"]
@@ -35,6 +36,11 @@ def transfer_direction_for_amount(amount: float) -> TransferDirection | None:
     if amount < 0:
         return "out"
     return None
+
+
+def new_id() -> str:
+    """Create an independent ID for a user-created entity."""
+    return uuid4().hex
 
 
 def _generate_id(*parts: str) -> str:
@@ -124,7 +130,7 @@ class Rule:
     transfer_note: str | None = None
 
     def matches(self, description: str) -> bool:
-        return self.pattern.lower() in description.lower()
+        return bool(self.pattern.strip()) and self.pattern.lower() in description.lower()
 
     def applies_to_source(self, transaction: Transaction) -> bool:
         return self.import_source is None or self.import_source == transaction.stable_import_source

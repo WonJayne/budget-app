@@ -156,8 +156,13 @@ def included_transactions(
 
 
 def cash_flow_totals(transactions: Iterable[Transaction]) -> CashFlowTotals:
-    total_inflow = sum(transaction.amount for transaction in transactions if transaction.flow_type == "inflow")
-    total_outflow = sum(abs(transaction.amount) for transaction in transactions if transaction.flow_type == "outflow")
+    total_inflow = 0.0
+    total_outflow = 0.0
+    for transaction in transactions:
+        if transaction.flow_type == "inflow":
+            total_inflow += transaction.amount
+        elif transaction.flow_type == "outflow":
+            total_outflow += abs(transaction.amount)
     return CashFlowTotals(total_inflow=total_inflow, total_outflow=total_outflow, balance=total_inflow - total_outflow)
 
 
@@ -229,12 +234,14 @@ def _transfer_group_status(count: int, transfer_inflow: float, transfer_outflow:
 
 
 def transfer_summary(transactions: Iterable[Transaction]) -> tuple[TransferGroupSummary, ...]:
-    grouped: defaultdict[tuple[str, str], list[Transaction]] = defaultdict(list)
+    grouped: defaultdict[tuple[str, str, str], list[Transaction]] = defaultdict(list)
     for transaction in transactions:
         if transaction.flow_type == "transfer":
-            grouped[(_transfer_group_label(transaction), transaction.currency)].append(transaction)
+            key = ("group", transaction.transfer_group_id, transaction.currency) if transaction.transfer_group_id else ("transaction", transaction.id, transaction.currency)
+            grouped[key].append(transaction)
     rows = []
-    for (group_id, currency), group in sorted(grouped.items()):
+    for (_, _, currency), group in sorted(grouped.items()):
+        group_id = _transfer_group_label(group[0])
         transfer_inflow = sum(transaction.amount for transaction in group if transaction.amount > 0)
         transfer_outflow = sum(abs(transaction.amount) for transaction in group if transaction.amount < 0)
         matched_amount = min(transfer_inflow, transfer_outflow)
@@ -272,28 +279,23 @@ def transfer_monitor_totals(groups: Iterable[TransferGroupSummary]) -> TransferM
     )
 
 
-def yearly_overview(transactions: Iterable[Transaction], year: int, *, currency: str | None = None, include_ignored: bool = False) -> tuple[YearlyOverviewRow, ...]:
+def yearly_overview(transactions: Iterable[Transaction], year: int, *, currency: str | None = None, owner: str | None = None, include_ignored: bool = False) -> tuple[YearlyOverviewRow, ...]:
+    selected = included_transactions(
+        transactions,
+        period=PeriodFilter(mode="year", year=year),
+        owner=owner,
+        currency=currency,
+        include_inflows=True,
+        include_ignored=include_ignored,
+        include_transfers=True,
+    )
+    by_month: defaultdict[int, list[Transaction]] = defaultdict(list)
+    for transaction in selected:
+        by_month[transaction.date.month].append(transaction)
     rows: list[YearlyOverviewRow] = []
     for month_number in range(1, 13):
-        period = PeriodFilter(mode="month", year=year, month=month_number)
-        included = included_transactions(
-            transactions,
-            period=period,
-            owner=None,
-            currency=currency,
-            include_inflows=True,
-            include_ignored=include_ignored,
-        )
-        transfers = included_transactions(
-            transactions,
-            period=period,
-            owner=None,
-            currency=currency,
-            include_inflows=True,
-            include_ignored=include_ignored,
-            include_transfers=True,
-        )
-        transfer_totals = transfer_monitor_totals(transfer_summary(transfers))
+        included = by_month[month_number]
+        transfer_totals = transfer_monitor_totals(transfer_summary(included))
         totals = cash_flow_totals(included)
         rows.append(
             YearlyOverviewRow(
@@ -367,6 +369,7 @@ def _target_actual(transactions: Iterable[Transaction], target, year: int, month
         include_inflows=True,
         include_ignored=include_ignored,
         currency=target.currency,
+        owner=target.owner,
         include_transfers=False,
     )
     if target.target_type == "savings":
@@ -385,6 +388,7 @@ def _target_actual(transactions: Iterable[Transaction], target, year: int, month
 
 
 def budget_comparison(transactions: Iterable[Transaction], targets, year: int, month: int, currency: str, today, *, include_ignored: bool = False) -> tuple[BudgetComparisonRow, ...]:
+    transactions = tuple(transactions)
     rows: list[BudgetComparisonRow] = []
     for target in targets:
         if not target.active or target.currency != currency:
